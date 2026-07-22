@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://c54af0wl0auwx"]
+
+[ext_resource type="Script" uid="uid://b1mijyjkslhfu" path="res://globals/sound_manager/SoundManager.gd" id="1_0wbjb"]
+[ext_resource type="Script" uid="uid://dd8uxrmtutff5" path="res://globals/sound_manager/sound_effect.gd" id="2_t4w6u"]
+[ext_resource type="AudioStream" uid="uid://camm2n4s878j" path="res://common/audio/sfx/ui/aud_ui_navigate.wav" id="3_57f3y"]
+[ext_resource type="AudioStream" uid="uid://cjqacppbmh2tk" path="res://common/audio/sfx/ui/aud_ui_open.wav" id="4_ymhco"]
+
+[node name="SoundManager" type="AudioStreamPlayer"]
+process_mode = 3
+script = ExtResource("1_0wbjb")
+
+[node name="UiSoundPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+volume_db = -10.0
+bus = &"SFX"
+
+[node name="AmbientSoundPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+volume_db = -12.0
+bus = &"Ambient"
+
+[node name="WeatherSoundPlayer" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+bus = &"Ambient"
+
+[node name="UiButtonPressedConnector" type="Node" parent="."]
+script = ExtResource("2_t4w6u")
+global_name = "GlobalSignalBus"
+start_signal_name = "ui_button_pressed"
+sound_effect = ExtResource("4_ymhco")
+metadata/_custom_type_script = "uid://dd8uxrmtutff5"
+
+[node name="UiButtonHoveredConnector" type="Node" parent="."]
+script = ExtResource("2_t4w6u")
+global_name = "GlobalSignalBus"
+start_signal_name = "ui_button_hovered"
+sound_effect = ExtResource("3_57f3y")
+metadata/_custom_type_script = "uid://dd8uxrmtutff5"

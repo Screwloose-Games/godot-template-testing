@@ -1,0 +1,116 @@
+[gd_scene format=3 uid="uid://daabskcdhrpea"]
+
+[ext_resource type="Theme" uid="uid://dxcditpyjnw8h" path="res://common/themes/theme.tres" id="1_theme"]
+[ext_resource type="Script" uid="uid://mulwvdivcwq4" path="res://common/ui/main_menu/main_menu.gd" id="2_script"]
+[ext_resource type="Script" uid="uid://bbffeeruv7sea" path="res://common/ui/main_menu/SFX/main_menu_audio.gd" id="3_audio"]
+[ext_resource type="AudioStream" uid="uid://camm2n4s878j" path="res://common/audio/sfx/ui/aud_ui_navigate.wav" id="4_nav"]
+[ext_resource type="AudioStream" uid="uid://cjqacppbmh2tk" path="res://common/audio/sfx/ui/aud_ui_open.wav" id="5_open"]
+[ext_resource type="AudioStream" uid="uid://50crscd7p7bx" path="res://common/audio/sfx/ui/aud_ui_close.wav" id="6_close"]
+[ext_resource type="AudioStream" uid="uid://3es011ed4pb4" path="res://common/audio/music/music_title_screen-loop.ogg" id="7_3h3sd"]
+[ext_resource type="PackedScene" uid="uid://bvuixmv4n68a6" path="res://common/ui/options_menu/options_menu.tscn" id="7_options"]
+
+[node name="MainMenu" type="Control" unique_id=1571659660]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Audio Control" type="Control" parent="." unique_id=95200106]
+anchors_preset = 0
+script = ExtResource("3_audio")
+navigate_sound = ExtResource("4_nav")
+open_sound = ExtResource("5_open")
+close_sound = ExtResource("6_close")
+
+[node name="MusicPlayer" type="AudioStreamPlayer" parent="." unique_id=1905805816]
+stream = ExtResource("7_3h3sd")
+volume_db = -5.0
+autoplay = true
+bus = &"Music"
+
+[node name="Background" type="ColorRect" parent="." unique_id=2051144202]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.101961, 0.117647, 0.156863, 1)
+
+[node name="MainPanel" type="CenterContainer" parent="." unique_id=162375931]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="MainPanel" unique_id=809008942]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MainPanel/PanelContainer" unique_id=961840640]
+layout_mode = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 60
+theme_override_constants/margin_bottom = 40
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainPanel/PanelContainer/MarginContainer" unique_id=907608885]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="MainPanel/PanelContainer/MarginContainer/VBoxContainer" unique_id=18383950]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "Game Title"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="MainPanel/PanelContainer/MarginContainer/VBoxContainer" unique_id=397817647]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+
+[node name="StartButton" type="Button" parent="MainPanel/PanelContainer/MarginContainer/VBoxContainer" unique_id=1340189053]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Start"
+
+[node name="OptionsButton" type="Button" parent="MainPanel/PanelContainer/MarginContainer/VBoxContainer" unique_id=1690060637]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Options"
+
+[node name="CreditsButton" type="Button" parent="MainPanel/PanelContainer/MarginContainer/VBoxContainer" unique_id=626761271]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Credits"
+
+[node name="QuitButton" type="Button" parent="MainPanel/PanelContainer/MarginContainer/VBoxContainer" unique_id=823228757]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Quit"
+
+[node name="OptionsMenu" parent="." unique_id=885553127 instance=ExtResource("7_options")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+grow_horizontal = 1
+grow_vertical = 1
+
+[connection signal="mouse_entered" from="MainPanel/PanelContainer/MarginContainer/VBoxContainer/StartButton" to="Audio Control" method="_on_hover"]
+[connection signal="pressed" from="MainPanel/PanelContainer/MarginContainer/VBoxContainer/StartButton" to="Audio Control" method="_on_open"]
+[connection signal="mouse_entered" from="MainPanel/PanelContainer/MarginContainer/VBoxContainer/OptionsButton" to="Audio Control" method="_on_hover"]
+[connection signal="pressed" from="MainPanel/PanelContainer/MarginContainer/VBoxContainer/OptionsButton" to="Audio Control" method="_on_open"]
+[connection signal="mouse_entered" from="MainPanel/PanelContainer/MarginContainer/VBoxContainer/CreditsButton" to="Audio Control" method="_on_hover"]
+[connection signal="pressed" from="MainPanel/PanelContainer/MarginContainer/VBoxContainer/CreditsButton" to="Audio Control" method="_on_open"]
+[connection signal="mouse_entered" from="MainPanel/PanelContainer/MarginContainer/VBoxContainer/QuitButton" to="Audio Control" method="_on_hover"]
+[connection signal="pressed" from="MainPanel/PanelContainer/MarginContainer/VBoxContainer/QuitButton" to="Audio Control" method="_on_close"]

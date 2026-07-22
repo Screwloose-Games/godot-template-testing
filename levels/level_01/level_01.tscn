@@ -1,0 +1,44 @@
+[gd_scene format=3 uid="uid://dn2nfv67cuiqq"]
+
+[ext_resource type="Script" path="res://levels/level_01/level_01.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://b8b6q7g4bsaw5" path="res://common/ui/pause_menu/pause_menu.tscn" id="2_pause"]
+
+[node name="Level01" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Background" type="ColorRect" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.14902, 0.180392, 0.141176, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="UI/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Level 01 — placeholder"
+horizontal_alignment = 1
+
+[node name="HintLabel" type="Label" parent="UI/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Press Esc to pause"
+horizontal_alignment = 1
+
+[node name="PauseMenu" parent="." instance=ExtResource("2_pause")]

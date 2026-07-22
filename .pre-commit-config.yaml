@@ -1,0 +1,33 @@
+# Git hooks for this repo, managed by the pre-commit framework.
+#
+# One-time setup per clone:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Useful commands:
+#   pre-commit run --all-files    # sweep the whole repo
+#   pre-commit autoupdate         # bump `rev` to the latest gdtoolkit release
+#   git commit --no-verify        # bypass in an emergency
+#
+# Notes:
+# - pre-commit builds its own isolated venv for gdtoolkit, so contributors do
+#   NOT need gdlint/gdformat on their PATH.
+# - `rev` is pinned so every dev and CI run agree. CI installs `gdtoolkit==4.*`
+#   (.github/workflows/gdlint-on-pull-request.yml), which currently resolves to
+#   this same release.
+# - `exclude` is required even though gdlintrc/gdformatrc list `addons` under
+#   `excluded_directories`: that setting is ignored when file paths are passed
+#   explicitly, and pre-commit always passes explicit staged paths. This mirrors
+#   the CI workflow's `files_ignore: 'addons/**'`.
+
+repos:
+  - repo: https://github.com/Scony/godot-gdscript-toolkit
+    rev: "4.5.0"
+    hooks:
+      - id: gdlint
+        exclude: '^addons/'
+      # --check reports files that need reformatting without rewriting them,
+      # so a commit is never silently mutated. Run `gdformat <file>` to fix.
+      - id: gdformat
+        args: ["--check"]
+        exclude: '^addons/'
