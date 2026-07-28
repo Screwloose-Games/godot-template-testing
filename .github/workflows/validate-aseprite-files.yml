@@ -1,0 +1,86 @@
+name: Validate Aseprite Files
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**/*.aseprite'
+      - '**/*.ase'
+      - '**/*.png'
+      # Re-run (and re-test) the check itself whenever its own code changes.
+      - '.github/scripts/validate-aseprite-files.py'
+      - '.github/scripts/test_validate_aseprite_files.py'
+      - '.github/workflows/validate-aseprite-files.yml'
+
+permissions:
+  pull-requests: write
+  contents: read
+jobs:
+  validate-aseprite:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    # Self-test the validator first. The .aseprite parser is hand-written against
+    # the documented binary layout, so a format regression must surface here
+    # rather than as a confusing failure on someone's art PR.
+    - name: Test validator
+      run: python .github/scripts/test_validate_aseprite_files.py
+
+    # `write_output_files: true` makes the action write each output to disk under
+    # .github/outputs/. We read all_changed_files.json from there instead of the
+    # ${{ steps.*.outputs.* }} string, because that string-output transport layer
+    # backslash-escapes special characters (spaces, quotes, (), !, ...) and corrupts
+    # the JSON -- the file on disk is pristine.
+    # `json: true` makes the written file a JSON array; `safe_output: false` keeps
+    # the values un-escaped.
+    - name: Find changed art files
+      id: changed-files
+      uses: tj-actions/changed-files@v46
+      with:
+        json: true
+        safe_output: false
+        write_output_files: true
+        files: |
+          **.aseprite
+          **.ase
+          **.png
+
+    # All the JSON parsing + filtering + validation lives in the script (not inline
+    # here), so the exact CI code path can be run and tested locally:
+    #   python .github/scripts/validate-aseprite-files.py --changed-files-json <payload>
+    # The script exits non-zero if any file fails validation, which fails this step
+    # (and therefore the job).
+    - name: Validate Aseprite and image files
+      if: steps.changed-files.outputs.any_changed == 'true'
+      id: validate-aseprite-files
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
+      run: python .github/scripts/validate-aseprite-files.py --changed-files-json .github/outputs/all_changed_files.json
+
+    # Post the report whether validation passed or failed (but not if the job was
+    # cancelled). The script writes `metadata` to GITHUB_OUTPUT before exiting, so
+    # it's available here even when the validate step failed.
+    - name: Comment PR
+      if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' && steps.validate-aseprite-files.outputs.metadata != '' }}
+      uses: thollander/actions-comment-pull-request@v3
+      with:
+        comment-tag: aseprite-file-checks
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        message: |
+          # This PR has been checked for 2D art files. 🎨
+          ## File Reports:
+          ${{ fromJson(steps.validate-aseprite-files.outputs.metadata).aseprite_reports }}
+          <br />
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}

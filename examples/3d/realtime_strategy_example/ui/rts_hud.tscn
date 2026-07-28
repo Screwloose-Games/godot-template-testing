@@ -1,0 +1,231 @@
+[gd_scene format=3 uid="uid://dvic2x06xmplh"]
+
+[ext_resource type="Script" uid="uid://d4nq0y3nrcf0p" path="res://examples/3d/realtime_strategy_example/ui/rts_hud.gd" id="1_hud"]
+
+[node name="RtsHud" type="CanvasLayer" unique_id=78622289]
+layer = 5
+script = ExtResource("1_hud")
+
+[node name="Root" type="Control" parent="." unique_id=521809905]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ResourcePanel" type="PanelContainer" parent="Root" unique_id=1803857795]
+unique_name_in_owner = true
+layout_mode = 1
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 232.0
+offset_bottom = 128.0
+
+[node name="Margin" type="MarginContainer" parent="Root/ResourcePanel" unique_id=2023465875]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="Column" type="VBoxContainer" parent="Root/ResourcePanel/Margin" unique_id=522720899]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GoldLabel" type="Label" parent="Root/ResourcePanel/Margin/Column" unique_id=1390941206]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Gold  150"
+
+[node name="IncomeLabel" type="Label" parent="Root/ResourcePanel/Margin/Column" unique_id=1755951916]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "Income  +3 / s"
+
+[node name="ArmyLabel" type="Label" parent="Root/ResourcePanel/Margin/Column" unique_id=839010596]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "Army  0 / 20"
+
+[node name="TopCenter" type="VBoxContainer" parent="Root" unique_id=1474939759]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -170.0
+offset_top = 16.0
+offset_right = 170.0
+offset_bottom = 122.0
+grow_horizontal = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="TimerPanel" type="PanelContainer" parent="Root/TopCenter" unique_id=1727771227]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="TimerMargin" type="MarginContainer" parent="Root/TopCenter/TimerPanel" unique_id=26495012]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 4
+
+[node name="TimerLabel" type="Label" parent="Root/TopCenter/TimerPanel/TimerMargin" unique_id=374599487]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "0:00"
+horizontal_alignment = 1
+
+[node name="PipRow" type="HBoxContainer" parent="Root/TopCenter" unique_id=1527247583]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 6
+
+[node name="ProductionPanel" type="PanelContainer" parent="Root" unique_id=1427986365]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -110.0
+offset_right = 240.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="Root/ProductionPanel" unique_id=1846631846]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="ProductionRow" type="HBoxContainer" parent="Root/ProductionPanel/Margin" unique_id=1699134542]
+unique_name_in_owner = true
+layout_mode = 2
+focus_behavior_recursive = 1
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="SelectionPanel" type="PanelContainer" parent="Root" unique_id=2052482487]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -78.0
+offset_right = 320.0
+offset_bottom = -16.0
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="Root/SelectionPanel" unique_id=1260943152]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="SelectionLabel" type="Label" parent="Root/SelectionPanel/Margin" unique_id=1751935670]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Nothing selected"
+autowrap_mode = 3
+
+[node name="HintPanel" type="PanelContainer" parent="Root" unique_id=1456598347]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -376.0
+offset_top = -286.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="Root/HintPanel" unique_id=762029942]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="HintLabel" type="Label" parent="Root/HintPanel/Margin" unique_id=524401116]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "CAMERA   WASD / arrows / screen edge — pan
+         Wheel — zoom     Middle-drag — pan
+SELECT   Click select     Drag box-select
+         Shift+click add  Ctrl+click remove
+         Double-click — all of type on screen
+         Ctrl+1..4 set group    1..4 recall
+ORDERS   Right-click ground — move (always obeyed)
+         Ctrl+right-click — attack-move
+         Right-click enemy — attack
+         Right-click with HQ selected — rally
+BUILD    Z Grunt    X Archer    C Tank
+OTHER    F centre selection   Space centre HQ
+         H hide this panel    Esc pause"
+
+[node name="ResultPanel" type="PanelContainer" parent="Root" unique_id=1139138260]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -140.0
+offset_right = 200.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="Root/ResultPanel" unique_id=802731252]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Column" type="VBoxContainer" parent="Root/ResultPanel/Margin" unique_id=99788677]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="ResultTitle" type="Label" parent="Root/ResultPanel/Margin/Column" unique_id=1297719721]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+text = "VICTORY"
+horizontal_alignment = 1
+
+[node name="ResultDetail" type="Label" parent="Root/ResultPanel/Margin/Column" unique_id=1131637070]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Match time 0:00"
+horizontal_alignment = 1
+
+[node name="MenuButton" type="Button" parent="Root/ResultPanel/Margin/Column" unique_id=238736582]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Exit to Main Menu"

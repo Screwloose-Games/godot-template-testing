@@ -1,0 +1,45 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://examples/3d/realtime_strategy_example/buildings/capture_point.gd" id="1_point"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pad"]
+top_radius = 8.0
+bottom_radius = 8.0
+height = 0.12
+radial_segments = 32
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pole"]
+top_radius = 0.22
+bottom_radius = 0.22
+height = 7.0
+radial_segments = 8
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="Material_pole"]
+albedo_color = Color(0.145098, 0.152941, 0.176471, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_banner"]
+size = Vector3(3, 2, 0.16)
+
+[node name="CapturePoint" type="Area3D"]
+script = ExtResource("1_point")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+unique_name_in_owner = true
+
+[node name="Pad" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+mesh = SubResource("CylinderMesh_pad")
+
+[node name="Pole" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, 0)
+mesh = SubResource("CylinderMesh_pole")
+surface_material_override/0 = SubResource("Material_pole")
+
+[node name="Banner" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.61, 5.4, 0)
+mesh = SubResource("BoxMesh_banner")

@@ -1,4 +1,4 @@
-name: gdlint on push
+name: gdlint on pull request
 
 on:
   workflow_dispatch:

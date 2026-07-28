@@ -9,7 +9,7 @@ body:
     attributes:
       label: Description
       description: Provide preciose names and descriptions of the animations to be created.
-      placeholder: "Enter the texture description... Grungy, dirty, bright...Character description..."
+      placeholder: "Enter the animation names and descriptions..."
       value: |
         - [ ] Walk - Walking with a pep in their step.
         - [ ] Run - Running, leaniung forward.
@@ -21,15 +21,18 @@ body:
     id: reference-images
     attributes:
       label: Reference Images
-      description: Provide reference images for this texture
+      description: Provide reference images or video for these animations
       placeholder: "Attach reference images..."
 
   - type: input
     id: file_path
     attributes:
       label: Save File Path
-      description: Provide the full filepath where the texture should be saved.
-      placeholder: "Enter the full file path... model_directory/textures/t_model_name_texture.png"
+      description: >-
+        Provide the full filepath where the animated model should be saved. This
+        is an animation issue, not a texture one -- the path is the .gltf, and it
+        sits in the object's own directory. See documentation/file-naming-spec.md.
+      placeholder: "Enter the full file path... assets/3d/{category}/{object_name}/sk_{object_name}.gltf"
     validations:
       required: true
 
@@ -41,8 +44,8 @@ body:
         - [ ] The animations file name contains the prefix "anim_", is all lowercase, and is underscore separated, i.e. "anim_{model_name}.blend"
         - [ ] When adding animations, looping animations should be tagges as "-loop"
         - [ ] The model is saved in `.blend` file format.
-        - [ ] The model is saved to the specified filepath: `game/{game_object_directory}/anim_{model_name}.blend`.
-        - [ ] The model is exported as gltf to the specified filepath: `game/{game_object_directory}/anim_{model_name}.gltf`.        
+        - [ ] The model is saved to the specified filepath: `assets/3d/{category}/{object_name}/anim_{model_name}.blend`.
+        - [ ] The model is exported as gltf to the specified filepath: `assets/3d/{category}/{object_name}/anim_{model_name}.gltf`.
         - [ ] A pull request (PR) is created with the changes.
   
   - type: textarea
@@ -55,8 +58,8 @@ body:
         - [ ] The animations file name contains the prefix "anim_", is all lowercase, and is underscore separated, i.e. "anim_{model_name}.blend"
         - [ ] When adding animations, looping animations should be tagges as "-loop"
         - [ ] The model is saved in `.blend` file format.
-        - [ ] The model is saved to the specified filepath: `game/{game_object_directory}/anim_{model_name}.blend`.
-        - [ ] The model is exported as gltf to the specified filepath: `game/{game_object_directory}/anim_{model_name}.gltf`.        
+        - [ ] The model is saved to the specified filepath: `assets/3d/{category}/{object_name}/anim_{model_name}.blend`.
+        - [ ] The model is exported as gltf to the specified filepath: `assets/3d/{category}/{object_name}/anim_{model_name}.gltf`.
         - [ ] A pull request (PR) is created with the changes.
 
         [Pull Request Guide: Github]("https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request")

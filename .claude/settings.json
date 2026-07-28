@@ -1,0 +1,98 @@
+{
+      "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | tr -d '\\r' | { read -r f; case \"$f\" in *.gd) out=$(gdlint \"$f\" 2>&1) || printf '%s' \"$out\" | jq -Rsc '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:(\"gdlint reported problems:\\n\"+.)}}';; esac; } 2>/dev/null || true",
+            "shell": "bash",
+            "timeout": 30,
+            "statusMessage": "Running gdlint..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {"type": "command", "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.gd$'; then gdformat $CLAUDE_FILE_PATHS && gdlint $CLAUDE_FILE_PATHS; fi"},
+          {"type": "command", "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.py$'; then uv run ruff check --fix $CLAUDE_FILE_PATHS && uv run pytest -q -x; fi"}
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(cd *)",
+      "Read(**)",
+      "Edit(**)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(npm test *)",
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit",
+      "Write",
+      "WebFetch",
+      "WebSearch",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(test:*)",
+      "Bash(chmod:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(tree:*)",
+      "Bash(env:*)",
+      "Bash(printf:*)",
+      "Bash(tee:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git init:*)",
+      "Bash(git reset:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(tmux:*)",
+      "Bash(cd *)",
+      "mcp__godot-ai__editor_state",
+      "mcp__godot-ai__editor_state",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; foreach \\($f in @\\('assets\\\\art\\\\char_test\\\\body.png','assets\\\\art\\\\char_test\\\\head.png','assets\\\\art\\\\char_test\\\\upper_arm.png','assets\\\\art\\\\char_test\\\\lower_arm.png','assets\\\\art\\\\char_test\\\\hero-glad-thigh.png','assets\\\\art\\\\char_test\\\\hero-glad-leg-lower-l.png','assets\\\\items\\\\sword.png','assets\\\\example-gladiator-back.png','assets\\\\example-gladiator-back-legs.png'\\)\\) { $img = [System.Drawing.Image]::FromFile\\(\\(Resolve-Path $f\\)\\); \"$f -> $\\($img.Width\\) x $\\($img.Height\\)\"; $img.Dispose\\(\\) })",
+      "mcp__godot-ai__editor_screenshot",
+      "Bash(git check-ignore *)",
+      "Bash(echo \"\\(exit $?\\)\")",
+      "Bash(git *)",
+      "Bash(ffmpeg -version)",
+      "Bash(ffprobe -hide_banner \"common/audio/music/music_title_screen-loop.ogg\")",
+      "Bash(ffprobe -hide_banner \"common/audio/sfx/ui/aud_ui_open.wav\")",
+      "Bash(ffprobe -hide_banner -show_entries format_tags -of default \"common/audio/music/music_title_screen-loop.ogg\")",
+      "Bash(grep -vE '^addons/|^assets/|\\\\.import$|^\\\\.github/')",
+      "Bash(xxd)",
+      "Bash(awk *)",
+      "Bash(gh auth *)",
+      "Bash(gh api *)",
+      "Bash(python -c 'import sys,json; *)",
+      "Read(//c/Users/jonat/repos/auto-battle-assistant/game-jam-chrome-extension/**)",
+      "Bash(awk '/^#+ *4\\\\./,/^#+ *5\\\\./' REQUIREMENTS.md)",
+      "Bash(cd C:\\\\Users\\\\jonat\\\\repos\\\\auto-battle-assistant\\\\game-jam-bootstrapper *)",
+      "Bash(gdlint *)"
+    ]
+  }
+}

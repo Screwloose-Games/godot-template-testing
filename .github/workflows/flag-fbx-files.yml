@@ -1,8 +1,8 @@
 name: Flag FBX Files
 on:
+  workflow_dispatch:
+  # No `branches:` filter -- see check-gdscript-complexity.yml.
   pull_request:
-    branches:
-      - main
     paths:
       - '**.fbx'
 permissions:
@@ -24,7 +24,7 @@ jobs:
         if: steps.fbx_check.outputs.any_changed == 'true'
         uses: thollander/actions-comment-pull-request@v3
         with:
-          comment-tag: flag-fbx-files-commen
+          comment-tag: flag-fbx-files-comment
           github-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
             # :warning: `FBX` files detected in this PR. 

@@ -24,8 +24,10 @@ body:
     id: file_path
     attributes:
       label: Save File Path
-      description: Provide the full filepath where the texture should be saved.
-      placeholder: "Enter the full file path... model_directory/textures/tex_model_name_texture.png"
+      description: >-
+        Provide the full filepath where the texture should be saved. Textures sit
+        beside the .gltf that references them, not in a separate textures/ folder.
+      placeholder: "Enter the full file path... assets/3d/{category}/{object_name}/t_{object_name}_basecolor.png"
     validations:
       required: true
 
@@ -35,7 +37,6 @@ body:
         ## Acceptance Criteria:
 
         - [ ] The texture is saved in `.png` file format.
-        - [ ] The texture file name contains the prefix "tex_", is all lowercase, and is underscore separated, i.e. "tex_model_name_texture.png"
         - [ ] The texture is saved to the specified filepath: `{file_path}`.
         - [ ] The texture is opened in Godot to generate the `.import` file.
         - [ ] The texture has been imported in godot (Godot opened) and has the accompanying `.import` file.
@@ -51,13 +52,22 @@ body:
       label: Subtasks
       value: |
         - [ ] The texture is saved in `.png` file format.
-        - [ ] The texture file name contains the prefix "tex_", is all lowercase, and is underscore separated, i.e. "tex_model_name_texture.png"
         - [ ] The texture is saved to the specified filepath: `{file_path}`.
         - [ ] The texture is opened in Godot to generate the `.import` file.
         - [ ] The texture has been imported in godot (Godot opened) and has the accompanying `.import` file.
         - [ ] A pull request (PR) is created with the changes.
 
+        <!-- pipeline:subtasks:start -->
+        <!-- Generated from documentation/pipeline/pipeline.yaml. Edit that file, then run tools/pipeline/render_issue_templates.py --write. -->
+        - [ ] Textures export as t_{asset_name}_{descriptor}.png, lowercase.
+        - [ ] Textures were exported with the glTF PBR Metal Roughness template.
+        - [ ] Filenames follow [prefix]_[asset_name]_[descriptor]_[variant].
+        - [ ] All authored filenames are lowercase with underscore separators.
+        - [ ] No .fbx files are included.
+        - [ ] The .import sidecar for every added asset is committed.
+        <!-- pipeline:subtasks:end -->
+
         [Pull Request Guide: Github]("https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request")
-        
+
         ## Blocking
         - Implementation tasks

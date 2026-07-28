@@ -1,0 +1,151 @@
+schema_version: "1.0"
+
+game:
+  id: depthbound
+  title: Depthbound
+  genre: action roguelite
+
+# --- Resources: every consumes/produces/via reference must resolve to one of these ---
+resources:
+  - id: stamina
+    name: Stamina
+    type: stat
+    persistence: ephemeral
+    description: Spent to attack/dodge, regenerates within combat.
+  - id: gold
+    name: Gold
+    type: currency
+    persistence: run
+    description: In-run currency; lost on death.
+  - id: xp
+    name: Experience
+    type: progression
+    persistence: run
+    description: Levels up the character for the current run only.
+  - id: loot
+    name: Loot
+    type: material
+    persistence: run
+    description: Gear and consumables picked up during a run.
+  - id: essence
+    name: Essence
+    type: currency
+    persistence: meta
+    description: Meta currency banked on extraction; survives death.
+  - id: gear_unlock
+    name: Gear Unlock
+    type: unlock
+    persistence: meta
+    description: Permanently unlocked equipment and upgrades.
+  - id: depth
+    name: Run Depth
+    type: information
+    persistence: run
+    description: How deep the current run has gone; scales rewards and danger.
+
+loops:
+  # --- CORE: moment-to-moment combat ---
+  - id: combat_core
+    name: Core Combat Loop
+    tier: core
+    cadence: "5-30s per engagement"
+    est_seconds: { min: 5, max: 30 }
+    intent: Feel skilled and reactive; master enemy tells and spacing.
+    trigger: An enemy enters aggro range.
+    steps:
+      - id: engage
+        action: Attack or dodge based on the enemy's tell.
+        consumes:
+          - { resource: stamina, amount: "1-2" }
+        feedback: Hit sparks, damage numbers, hitstop.
+        next: [assess]
+      - id: assess
+        action: Read remaining enemies and your resources; press or reposition.
+        next: [engage, resolve]   # branch: keep fighting, or the encounter ends
+      - id: resolve
+        action: Last enemy in the encounter dies.
+        produces:
+          - { resource: gold, amount: "3-8" }
+          - { resource: xp, amount: "1-5" }
+          - { resource: loot, amount: "0-1" }
+        feedback: Death burst, loot pop, brief calm.
+        # no `next` on the terminal step -> defaults back to `engage` (cycle closes)
+    exit:
+      - condition: Encounter cleared and no new aggro.
+        to: run_session
+      - condition: Player HP reaches zero.
+        to: meta_progression   # death routes back to the hub
+
+  # --- SESSION: one run/dive ---
+  - id: run_session
+    name: Run Loop
+    tier: session
+    cadence: "10-25 min per run"
+    est_seconds: { min: 600, max: 1500 }
+    intent: Push your luck for a deeper, richer run without dying.
+    trigger: Player starts a run from the hub.
+    steps:
+      - id: enter_room
+        action: Enter the next room and trigger its encounters.
+        feedback: Room reveal, threat readout.
+        next: [fight]
+      - id: fight
+        action: Resolve the room's combat (drops into the core combat loop).
+        consumes:
+          - { resource: loot, note: consumables may be spent mid-fight }
+        produces:
+          - { resource: gold }
+          - { resource: xp }
+        next: [choose_path]
+      - id: choose_path
+        action: Pick the next door (risk vs reward) or a shop.
+        consumes:
+          - { resource: gold, note: optional spend at shops }
+        next: [descend, extract]   # branch: go deeper or bank and leave
+      - id: descend
+        action: Take stairs down; increase depth and difficulty.
+        produces:
+          - { resource: depth, amount: 1 }
+        next: [enter_room]         # cycle back to the top of the run
+      - id: extract
+        action: Reach an exit and bank the run's spoils.
+        produces:
+          - { resource: essence, amount: scales_with_depth }
+        feedback: Extraction fanfare, run summary.
+    exit:
+      - condition: Player extracts.
+        to: meta_progression
+      - condition: Player dies (handled by combat_core exit).
+        to: meta_progression
+    feeds:
+      - loop: meta_progression
+        via: [essence]
+        note: Banked essence funds permanent upgrades.
+
+  # --- META: long-term progression across runs ---
+  - id: meta_progression
+    name: Meta Progression Loop
+    tier: meta
+    cadence: "spans many runs"
+    intent: Feel lasting growth; every run leaves you permanently stronger.
+    trigger: Player returns to the hub (via extraction or death).
+    steps:
+      - id: review
+        action: Review the run summary and current unlocks.
+        feedback: Progress bars, newly-affordable upgrades highlighted.
+        next: [spend]
+      - id: spend
+        action: Spend essence on permanent gear and upgrades.
+        consumes:
+          - { resource: essence }
+        produces:
+          - { resource: gear_unlock, amount: "0-2" }
+        feedback: Unlock flourish, power delta preview.
+        next: [start_run]
+      - id: start_run
+        action: Equip a loadout and launch the next run.
+        # terminal step -> cycles back to `review` on return
+    feeds:
+      - loop: run_session
+        via: [gear_unlock]
+        note: Unlocks make the next run reach greater depth.

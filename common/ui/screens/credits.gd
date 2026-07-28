@@ -2,7 +2,22 @@
 class_name Credits
 extends Control
 
+## Auto-scrolling credits roll rendered from a Markdown file.
+##
+## Markdown is a NON-RESOURCE file. It reaches an exported build only when the
+## export preset lists `*.md` under "Filters to export non-resource files/folders"
+## (`include_filter` in export_presets.cfg). CI asserts this; see README.md.
+
 signal end_reached
+
+## Shown when the Markdown file cannot be read. Deliberately visible: a silent
+## failure here used to leave stale placeholder text on screen, which made a
+## broken export look like a working one.
+const MISSING_FILE_TEXT := "# Credits\n\nCredits file could not be loaded."
+const MISSING_FILE_ERROR := (
+	"Credits: %s is not present in this build. Add *.md to the export preset's "
+	+ '"Filters to export non-resource files/folders" (include_filter).'
+)
 
 @export_file("*.md") var attribution_file_path: String = "res://ATTRIBUTION.md"
 @export var h1_font_size: int
@@ -33,10 +48,16 @@ func _input(event: InputEvent) -> void:
 		GlobalSignalBus.title_screen_started.emit()
 
 
-func load_file(file_path) -> String:
-	var file_string = FileAccess.get_file_as_string(file_path)
-	if file_string == null:
-		push_warning("File open error: %s" % FileAccess.get_open_error())
+func load_file(file_path: String) -> String:
+	if not FileAccess.file_exists(file_path):
+		push_error(MISSING_FILE_ERROR % file_path)
+		return ""
+	# get_file_as_string() returns an empty String on failure, never null.
+	var file_string := FileAccess.get_file_as_string(file_path)
+	if file_string.is_empty():
+		push_error(
+			"Credits: could not read %s (error %d)." % [file_path, FileAccess.get_open_error()]
+		)
 		return ""
 	return file_string
 
@@ -62,15 +83,23 @@ func regex_replace_titles(credits: String):
 	return credits
 
 
-func _update_text_from_file():
-	var text: String = load_file(attribution_file_path)
-	if text == "":
-		return
-	var end_of_first_line = text.find("\n") + 1
-	text = text.right(-end_of_first_line)  # Trims first line "ATTRIBUTION"
+func _markdown_to_bbcode(markdown: String) -> String:
+	var text := markdown
+	# Drop the document title line ("# Game Title") -- the roll has its own heading.
+	# find() returns -1 for a single-line file, which must not wipe the whole text.
+	var first_newline := text.find("\n")
+	if first_newline != -1:
+		text = text.substr(first_newline + 1)
 	text = regex_replace_urls(text)
 	text = regex_replace_titles(text)
-	%CreditsLabel.text = "[center]%s[/center]" % [text]
+	return text
+
+
+func _update_text_from_file() -> void:
+	var markdown := load_file(attribution_file_path)
+	if markdown.is_empty():
+		markdown = MISSING_FILE_TEXT
+	%CreditsLabel.text = "[center]%s[/center]" % _markdown_to_bbcode(markdown)
 
 
 func set_file_path(file_path: String):
@@ -79,6 +108,11 @@ func set_file_path(file_path: String):
 
 
 func set_header_and_footer():
+	# A web canvas can report 0x0 before the browser has laid the iframe out.
+	# Writing 0 into the spacers makes is_end_reached() true on the first frame,
+	# which latches scroll_paused and freezes the roll for good.
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
 	_current_scroll_position = $ScrollContainer.scroll_vertical
 	%HeaderSpace.custom_minimum_size.y = size.y
 	%FooterSpace.custom_minimum_size.y = size.y
@@ -93,12 +127,17 @@ func reset():
 
 func _end_reached():
 	scroll_paused = true
-	emit_signal("end_reached")
+	end_reached.emit()
 
 
-func is_end_reached():
-	var end_of_credits_vertical = %CreditsLabel.size.y + %HeaderSpace.size.y
-	return $ScrollContainer.scroll_vertical > end_of_credits_vertical
+func is_end_reached() -> bool:
+	var credits_height: float = %CreditsLabel.size.y
+	var header_height: float = %HeaderSpace.size.y
+	if credits_height <= 0.0 or header_height <= 0.0:
+		# Layout has not settled yet (first frame, or an unsized web canvas).
+		return false
+	# `>` could never be satisfied: scroll_vertical maxes out at exactly this sum.
+	return $ScrollContainer.scroll_vertical >= credits_height + header_height
 
 
 func _check_end_reached():

@@ -35,7 +35,6 @@ texture = SubResource("GradientTexture1D_l8b4i")
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
-scroll_vertical = 100
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
 
@@ -55,24 +54,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 5
 bbcode_enabled = true
-text = "[center]
-[font_size=48]Credits[/font_size]
-
-- **Producer:** Jessica Flor
-- **Producer:** Jonathan David Lewis
-- **Narrative** Zell
-- **Programmer** Josep Valls
-
-- **3D Artist:** unknown
-- **Animation:** unknown
-
-- **Music Composition and Sound Design:** unknown
-
-- **Programming:** unknown
-
-[font_size=48]Additional assets[/font_size]
-- https://kenney.nl/assets/food-kit
-[/center]"
 fit_content = true
 scroll_active = false
 

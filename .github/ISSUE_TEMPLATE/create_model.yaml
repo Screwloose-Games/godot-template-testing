@@ -38,10 +38,15 @@ body:
     id: file_path
     attributes:
       label: Save File Path
-      description: Provide the full filepath where the model should be saved.
+      description: >-
+        Provide the full filepath where the model should be saved. The exported
+        .gltf, its .bin, and its textures all live in this one directory.
       placeholder: "Enter the full file path..."
-      value: "game/{game_object_directory}/{object_name}.blend"
-      value: "game/{game_object_directory}/{object_name}.gltf"
+      # This key was previously duplicated (.blend then .gltf), which is invalid
+      # YAML and silently resolved to the .gltf line.
+      # The root is assets/3d/ -- game/ is the 2D art root. See
+      # documentation/pipeline/pipeline.yaml.
+      value: "assets/3d/{category}/{object_name}/sm_{object_name}.gltf"
     validations:
       required: true
 
@@ -64,17 +69,33 @@ body:
         - [ ] Model normals correct.
         - [ ] The model contains UV mapping.
         - [ ] UV islands created as needed.
-        - [ ] Set the pivot point of the model to the correct location (often bottom center)
-        - [ ] Align the pivot point of the model to the world origin.
-        - [ ] Model facing direction __Positive-Y direction__
         - [ ] Model is the correct __dimentions__ as defined above.
-        - [ ] Ensure no mesh has a child mesh (breaks collision shape generation)
         - [ ] The model is saved in `.blend` file format.
-        - [ ] The model is prefixed with sk_ for skeletal mesh and sm_ for static mesh.
-        - [ ] The model is saved to the specified filepath: `game/{game_object_directory}/sk_{model_name}.blend`.
-        - [ ] The model is exported as gltf to the specified filepath: `game/{game_object_directory}/sk_{model_name}.gltf`.
         - [ ] A pull request (PR) is created with the changes.
-        
+
+        <!-- pipeline:subtasks:start -->
+        <!-- Generated from documentation/pipeline/pipeline.yaml. Edit that file, then run tools/pipeline/render_issue_templates.py --write. -->
+        - [ ] The placeholder matches the dimensions on the issue.
+        - [ ] The placeholder uses the asset's final filename.
+        - [ ] No mesh has a child mesh.
+        - [ ] The pivot is at the world origin and in the correct spot on the model.
+        - [ ] The model faces +Y in Blender.
+        - [ ] Poly count is within budget.
+        - [ ] The model is exported as .gltf (separate), not .glb.
+        - [ ] The filename is prefixed sm_ or sk_.
+        - [ ] The exported .gltf faces -Z (from +Y in Blender).
+        - [ ] The exported .gltf is +Y up.
+        - [ ] No texture was renamed by hand; wrong names were fixed at the exporter.
+        - [ ] All files for the object are in assets/3d/{category}/{object}/.
+        - [ ] The files were imported through the Godot editor.
+        - [ ] The .import sidecars were confirmed in the OS file explorer.
+        - [ ] The mesh, buffer, textures and every .import sidecar are in the same commit.
+        - [ ] Filenames follow [prefix]_[asset_name]_[descriptor]_[variant].
+        - [ ] All authored filenames are lowercase with underscore separators.
+        - [ ] No .fbx files are included.
+        - [ ] The .import sidecar for every added asset is committed.
+        <!-- pipeline:subtasks:end -->
+
         [Pull Request Guide: Github](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
 
         ## Implementation Criteria

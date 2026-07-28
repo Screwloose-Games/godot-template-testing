@@ -6,6 +6,10 @@ on:
     paths:
       - '**.gltf'
       - '**.glb'
+      - '**.spec.yaml'
+      # Re-run (and re-test) the validator whenever its own code changes.
+      - 'tools/gltf-validator/**'
+      - '.github/workflows/validate-gltf-files.yml'
 
 # Add permissions block
 permissions:
@@ -19,6 +23,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # The axis and transform checks are pure node-graph maths, so they are
+      # tested outside the validator image: numpy and pyyaml only, no trimesh or
+      # pyrender. Runs before the image is pulled so a broken check fails fast
+      # and cheap.
+      - name: Test the axis and transform checks
+        run: |
+          pip install numpy pyyaml
+          python tools/gltf-validator/test_gltf_axes.py
+          python tools/gltf-validator/test_gltf_transforms.py
+          python tools/gltf-validator/test_validate_gltf_spec.py
+
+      # GHCR rejects uppercase in image names but the owner slug is mixed case,
+      # so lowercase it. Derived rather than hardcoded so forks pull the image
+      # their own build-and-push-gltf-validator.yml produced.
+      - name: Resolve validator image
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/gltf-validator:latest" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -77,7 +104,7 @@ jobs:
               -e GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
               -e GITHUB_REPOSITORY="${GITHUB_REPOSITORY}" \
               -e GITHUB_COMMIT_SHA="${GITHUB_COMMIT_SHA}" \
-              ghcr.io/screwloose-games/gltf-validator:latest \
+              ${{ steps.image.outputs.name }} \
               "/workspace/gltf-validation-results" "${files[@]}"
           else
             echo "No GLTF files to process"
@@ -91,32 +118,41 @@ jobs:
           path: gltf-validation-results/
           retention-days: 1
 
-      # - name: Configure Git author
-      #   run: |
-      #     # local to this repo:
-      #     git config user.name "GitHub Actions"
-      #     git config user.email "actions@github.com"
+      # The render images are pushed to an orphan `assets` branch so they can be
+      # linked from the PR comment without bloating the main branch's history.
+      # A fresh repo has no such branch, so create it before the checkout below
+      # tries to fetch it -- otherwise the whole workflow hard-fails on the very
+      # first model anyone commits.
+      #
+      # This uses plumbing rather than `checkout --orphan` on purpose: commit-tree
+      # writes a parentless commit straight to the object store, so the working
+      # tree and the currently checked-out branch are never disturbed.
+      - name: Ensure assets branch exists
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
+        run: |
+          if git ls-remote --exit-code --heads origin assets >/dev/null 2>&1; then
+            echo "assets branch already exists"
+          else
+            echo "assets branch missing - creating it"
+            empty_tree="$(git hash-object -t tree /dev/null)"
+            commit="$(git commit-tree "$empty_tree" -m 'Initialize assets branch')"
+            git push origin "$commit:refs/heads/assets"
+          fi
 
-      # - name: Create assets branch
-      #   run: |
-      #     if ! git show-ref --verify --quiet refs/heads/assets; then
-      #       git checkout --orphan assets
-      #       git fetch origin assets || true
-      #       git reset --hard origin/assets || true
-      #       git commit --allow-empty -m "Initial empty commit on assets branch"
-      #       git push origin assets
-      #     fi
-      
-      # - name: Checkout code
-      #   uses: actions/checkout@v4
-      
       - name: Checkout assets branch
-        uses: actions/checkout@v3
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/checkout@v4
         with:
           ref: assets
           path: assets-branch
 
       - name: Run markdown processor
+        if: steps.changed-files.outputs.any_changed == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -124,6 +160,7 @@ jobs:
         run: python .github/scripts/process_markdown.py "gltf-validation-results/github_comment.md"
 
       - name: Commit and push new images to `assets` branch
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           cd assets-branch
           git status
@@ -132,8 +169,12 @@ jobs:
           git add uploaded-assets
           git commit -m "Add uploaded assets" || echo "No changes to commit"
           git push origin HEAD:assets
-      
+
+      # Guarded on any_changed: without it, a workflow_dispatch run (or a PR that
+      # touches no models) reaches this step with an empty `success` output and
+      # exits 1, failing a run that had nothing to validate.
       - name: Set workflow status
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           if [ "${{ steps.gltf-validator.outputs.success }}" == "true" ]; then
             echo "GLTF validation completed successfully."

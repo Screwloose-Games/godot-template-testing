@@ -27,6 +27,7 @@ on:
       - '**/*.woff2'
       - '**/*.gltf'
       - '**/*.glb'
+      - '**/*.bin' # external glTF buffers -- a .gltf is unimportable without them
       - '**/*.obj'
       - '**/*.fbx'
       - '**/*.dae'
@@ -42,7 +43,7 @@ jobs:
     name: Check for missing/stale .import files
     runs-on: ubuntu-latest
     container:
-      image: barichello/godot-ci:4.7.1 # matches project.godot's declared Godot 4.7
+      image: barichello/godot-ci:${{ vars.GODOT_VERSION || '4.7.1' }} # matches project.godot's declared Godot 4.7
     defaults:
       run:
         shell: bash # need bash for `-z` / `mapfile -d ''` parsing below

@@ -57,7 +57,7 @@ schemas/        JSON schema for GitHub issue form templates
 
 | Workflow | When | What |
 |---|---|---|
-| `build-godot-game.yml` | `v*` tag | Headless web export (adds `coi-serviceworker.js` for itch.io) |
+| `build-godot-game.yml` | `v*` tag | Headless Web, Linux, Windows, and macOS exports (web adds `coi-serviceworker.js` for itch.io) |
 | `publish-to-itchio.yml` | after successful build | Pushes web build to itch.io via butler |
 | `gdlint-on-pull-request.yml` | PR touching `.gd` | Lints changed GDScript |
 | `check-gdscript-complexity.yml` | PR touching `.gd` | Cyclomatic-complexity report comment |
@@ -71,3 +71,5 @@ Issue templates under `.github/ISSUE_TEMPLATE/` cover the asset-request workflow
 ## Export
 
 Renderer is GL Compatibility for web (itch.io) export. Presets exist for Web, Windows, macOS, and Linux; the release pipeline uses **Web**.
+
+`ATTRIBUTION.md` is a *non-resource* file. Godot ships it only because every export preset lists `*.md` under "Filters to export non-resource files/folders" (`include_filter` in `export_presets.cfg`). If you rename the file or add a preset, keep that filter — otherwise the credits screen renders its fallback text instead of your credits. Losing the filter does not fail the export, so CI asserts `ATTRIBUTION.md` is inside the exported pack and fails the build if it is not. `export_presets.cfg` cannot carry comments (the Godot editor strips them whenever it rewrites the file), which is why this note lives here.

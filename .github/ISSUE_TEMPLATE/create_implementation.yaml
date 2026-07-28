@@ -27,21 +27,28 @@ body:
       value: |
         ## Acceptance Criteria Guidelines:
         - [ ] Delete any filetype not needed for implementation in Subtasks.
-        - [ ] Provide .gltf Location: game/{folder_name}/{prefix}_{file_name}.gltf
+        - [ ] Provide .gltf Location: assets/3d/{category}/{object_name}/{prefix}_{file_name}.gltf
         - [ ] Verify that the file is in the correct spot.
 
         ## File Path Standards
+        See documentation/file-naming-spec.md for the full convention.
         - {prefix}: sk_ || sm_
-        - {folder_name}: Enter your own folder name if no other folder matches.
-        - {model_name}: Enter the name of the model.
+        - {category}: The grouping directory, e.g. structures. Make one if nothing fits.
+        - {object_name}: The object's own directory, matching the file name.
         - {file_name}: Enter the name of the file.
         - {Same Directory}: Same directory.
         - [Under Construction]: Developing SOP.
 
+        3D assets live under `assets/3d/`. `game/` is the 2D art root; older
+        templates asked for 3D there and that form is deprecated.
+
         ## Texture Reminders
-        - Albedo (Reason: Base color for the material)
-        - Roughness (Reason: Affects the way reflection happens)
-        - Normal Map (Reason: Finer shapes)
+        Textures are named `t_{asset_name}_{descriptor}.png` and sit beside the
+        .gltf that references them.
+        - Albedo — `t_{asset_name}_basecolor.png` (base color for the material)
+        - Roughness — `t_{asset_name}_roughness.png` (affects the way reflection happens)
+        - Normal Map — `t_{asset_name}_normal.png` (finer shapes)
+        - Packed — `t_{asset_name}_orm.png` (AO in R, roughness in G, metallic in B)
 
   - type: textarea
     validations:
@@ -53,21 +60,21 @@ body:
         ## Acceptance Criteria:
         
         ### Skeletal Mesh (sk_)
-        - [ ] .gltf Location: game/{folder_name}/sk_{file_name}.gltf
+        - [ ] .gltf Location: assets/3d/{category}/{object_name}/sk_{file_name}.gltf
         #### Configure Inherited Scene
         - [ ] Open location in Godot > Right click gltf file > New Inherited Scene
         - [ ] Under Scene > Click on a MeshInstance3D. (Repeat for each MeshInstance3D)
         - [ ] Under Inspector > Click Surface Material Override dropdown.
         - [ ] Click <empty> > New StandardMaterial3D > Click on material to bring up property settings.
         - [ ] Fill out Albedo || (Sometimes Roughness or/and Normal Map)
-        - [ ] Under FileSystem > find related tex_ file in {Same Directory}.
+        - [ ] Under FileSystem > find the related t_ texture file in {Same Directory}.
         - [ ] Drag to Texture property of Albedo.
         - [ ] Right click on the Inherited Scene > Save Scene As... in {Same Directory} as .gltf file.
         - [ ] File will save as tscn: sk_{file_name}.tscn
         - [ ] GitHub Pull Request Created > Assign Reviewer.   
         
         ### Static Mesh (sm_)
-        - [ ] .gltf Location: game/{folder_name}/sm_{file_name}.gltf
+        - [ ] .gltf Location: assets/3d/{category}/{object_name}/sm_{file_name}.gltf
         #### Configure Advanced Import Settings
         - [ ] Under FileSystem > Double click the .gltf file to open Advanced Import Settings for Scene.
         - [ ] Under Scene > Click on a MeshInstance3D. (Repeat for each MeshInstance3D)
@@ -79,10 +86,10 @@ body:
         - [ ] Under Inspector > Click Surface Material Override dropdown.
         - [ ] Click <empty> > New StandardMaterial3D > Click on material to bring up property settings.
         - [ ] Fill out Albedo || (Sometimes Roughness or/and Normal Map)
-        - [ ] Under FileSystem > find related tex_ file in {Same Directory}.
+        - [ ] Under FileSystem > find the related t_ texture file in {Same Directory}.
         - [ ] Drag to Texture property of Albedo.
         - [ ] Right click on the Inherited Scene > Save Scene As... in {Same Directory} as .gltf file.
-        - [ ] File will save as tscn: sk_{file_name}.tscn
+        - [ ] File will save as tscn: sm_{file_name}.tscn
         - [ ] GitHub Pull Request Created > Assign Reviewer.
 
         ### Sound (aud_)

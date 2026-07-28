@@ -9,7 +9,7 @@ on:
       - completed
 
 env:
-  GODOT_VERSION: 4.7.1
+  GODOT_VERSION: ${{ vars.GODOT_VERSION || '4.7.1' }}
   ITCH_USER: ${{ vars.ITCH_USER }}
   ITCH_GAME: ${{ vars.ITCH_GAME }}
   BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
@@ -28,6 +28,9 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: deploy to itch.io (web)
+        # UNPINNED third-party action that receives BUTLER_CREDENTIALS. See the
+        # "Pinning third-party actions" section of .github/workflows/README.md
+        # for the one-liner that resolves this to a commit SHA.
         uses: josephbmanley/butler-publish-itchio-action@master
         env:
           BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}

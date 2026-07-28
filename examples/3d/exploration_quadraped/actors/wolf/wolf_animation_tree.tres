@@ -1,0 +1,92 @@
+[gd_resource type="AnimationNodeStateMachine" format=3 uid="uid://dbyavfo4gbyj1"]
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_dgdm1"]
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_7j7d2"]
+animation = &"jump"
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_w3r72"]
+nodes/Jump/node = SubResource("AnimationNodeAnimation_7j7d2")
+nodes/Jump/position = Vector2(0, 0)
+nodes/AirRate/node = SubResource("AnimationNodeTimeScale_dgdm1")
+nodes/AirRate/position = Vector2(280, 0)
+node_connections = [&"output", 0, &"AirRate", &"AirRate", 0, &"Jump"]
+
+[sub_resource type="AnimationNodeTimeScale" id="AnimationNodeTimeScale_oblw6"]
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_x35jo"]
+animation = &"walk"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_atooi"]
+animation = &"amble"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_6gslb"]
+animation = &"pace"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_hegon"]
+animation = &"trot"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_fdy46"]
+animation = &"canter"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_huc40"]
+animation = &"gallop"
+
+[sub_resource type="AnimationNodeBlendSpace1D" id="AnimationNodeBlendSpace1D_jckpm"]
+min_space = 0.0
+max_space = 5.0
+snap = 0.01
+value_label = "speed (m/s)"
+sync_mode = 2
+blend_point_0/node = SubResource("AnimationNodeAnimation_x35jo")
+blend_point_0/pos = 0.55
+blend_point_0/name = &"walk"
+blend_point_1/node = SubResource("AnimationNodeAnimation_atooi")
+blend_point_1/pos = 0.97222215
+blend_point_1/name = &"amble"
+blend_point_2/node = SubResource("AnimationNodeAnimation_6gslb")
+blend_point_2/pos = 1.4655173
+blend_point_2/name = &"pace"
+blend_point_3/node = SubResource("AnimationNodeAnimation_hegon")
+blend_point_3/pos = 1.7592592
+blend_point_3/name = &"trot"
+blend_point_4/node = SubResource("AnimationNodeAnimation_fdy46")
+blend_point_4/pos = 2.5
+blend_point_4/name = &"canter"
+blend_point_5/node = SubResource("AnimationNodeAnimation_huc40")
+blend_point_5/pos = 4.6428576
+blend_point_5/name = &"gallop"
+
+[sub_resource type="AnimationNodeAnimation" id="AnimationNodeAnimation_rhted"]
+animation = &"idle"
+
+[sub_resource type="AnimationNodeBlend2" id="AnimationNodeBlend2_h003p"]
+sync = true
+
+[sub_resource type="AnimationNodeBlendTree" id="AnimationNodeBlendTree_xsjxr"]
+nodes/Idle/node = SubResource("AnimationNodeAnimation_rhted")
+nodes/Idle/position = Vector2(0, 0)
+nodes/GaitSpace/node = SubResource("AnimationNodeBlendSpace1D_jckpm")
+nodes/GaitSpace/position = Vector2(0, 200)
+nodes/GaitRate/node = SubResource("AnimationNodeTimeScale_oblw6")
+nodes/GaitRate/position = Vector2(280, 200)
+nodes/IdleMove/node = SubResource("AnimationNodeBlend2_h003p")
+nodes/IdleMove/position = Vector2(520, 80)
+node_connections = [&"output", 0, &"IdleMove", &"GaitRate", 0, &"GaitSpace", &"IdleMove", 0, &"Idle", &"IdleMove", 1, &"GaitRate"]
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_8ybkr"]
+advance_mode = 2
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_0moy4"]
+xfade_time = 0.08
+
+[sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_a656u"]
+xfade_time = 0.15
+reset = false
+
+[resource]
+states/Airborne/node = SubResource("AnimationNodeBlendTree_w3r72")
+states/Airborne/position = Vector2(760, 60)
+states/Ground/node = SubResource("AnimationNodeBlendTree_xsjxr")
+states/Ground/position = Vector2(420, 60)
+transitions = ["Start", "Ground", SubResource("AnimationNodeStateMachineTransition_8ybkr"), "Ground", "Airborne", SubResource("AnimationNodeStateMachineTransition_0moy4"), "Airborne", "Ground", SubResource("AnimationNodeStateMachineTransition_a656u")]

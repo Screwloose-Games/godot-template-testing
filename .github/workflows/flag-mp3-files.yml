@@ -1,9 +1,9 @@
 name: Flag MP3 Files
 
 on:
+  workflow_dispatch:
+  # No `branches:` filter -- see check-gdscript-complexity.yml.
   pull_request:
-    branches:
-      - main
     paths:
       - '**.mp3'
 permissions:

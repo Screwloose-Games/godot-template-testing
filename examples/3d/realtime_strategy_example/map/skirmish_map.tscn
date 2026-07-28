@@ -1,0 +1,193 @@
+[gd_scene load_steps=15 format=3]
+
+[ext_resource type="PackedScene" path="res://examples/3d/realtime_strategy_example/buildings/rts_hq.tscn" id="1_hq"]
+[ext_resource type="PackedScene" path="res://examples/3d/realtime_strategy_example/buildings/capture_point.tscn" id="2_point"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky_material"]
+sky_top_color = Color(0.196078, 0.278431, 0.407843, 1)
+sky_horizon_color = Color(0.454902, 0.505882, 0.556863, 1)
+ground_bottom_color = Color(0.113725, 0.129412, 0.14902, 1)
+ground_horizon_color = Color(0.454902, 0.505882, 0.556863, 1)
+sun_angle_max = 24.0
+
+[sub_resource type="Sky" id="Sky_dome"]
+sky_material = SubResource("Sky_material")
+
+[sub_resource type="Environment" id="Environment_arena"]
+background_mode = 2
+sky = SubResource("Sky_dome")
+ambient_light_source = 3
+ambient_light_energy = 0.55
+tonemap_mode = 2
+tonemap_white = 2.0
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_arena"]
+vertices = PackedVector3Array(-44, 0, -38, -44, 0, 38, 44, 0, 38, 44, 0, -38)
+polygons = [PackedInt32Array(0, 1, 2, 3)]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(240, 220)
+
+[sub_resource type="StandardMaterial3D" id="Material_ground"]
+albedo_color = Color(0.121569, 0.152941, 0.129412, 1)
+roughness = 1.0
+metallic_specular = 0.0
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_field"]
+size = Vector2(92, 80)
+
+[sub_resource type="StandardMaterial3D" id="Material_field"]
+albedo_color = Color(0.203922, 0.254902, 0.203922, 1)
+roughness = 1.0
+metallic_specular = 0.0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(240, 1, 220)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_rock"]
+top_radius = 2.4
+bottom_radius = 3.0
+height = 4.0
+radial_segments = 10
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="Material_rock"]
+albedo_color = Color(0.203922, 0.215686, 0.243137, 1)
+roughness = 1.0
+metallic_specular = 0.0
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_rock"]
+height = 4.0
+radius = 3.0
+
+[node name="SkirmishMap" type="Node3D"]
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.35, 0.35, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 30, 0)
+light_energy = 1.1
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_arena")
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("NavigationMesh_arena")
+
+[node name="Ground" type="StaticBody3D" parent="NavigationRegion3D"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="GroundMesh" type="MeshInstance3D" parent="NavigationRegion3D/Ground"]
+mesh = SubResource("PlaneMesh_ground")
+surface_material_override/0 = SubResource("Material_ground")
+
+[node name="FieldMesh" type="MeshInstance3D" parent="NavigationRegion3D/Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+mesh = SubResource("PlaneMesh_field")
+surface_material_override/0 = SubResource("Material_field")
+
+[node name="GroundCollision" type="CollisionShape3D" parent="NavigationRegion3D/Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("BoxShape3D_ground")
+
+[node name="Obstacles" type="Node3D" parent="."]
+
+[node name="RockWest" type="StaticBody3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 2, 6)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Obstacles/RockWest"]
+mesh = SubResource("CylinderMesh_rock")
+surface_material_override/0 = SubResource("Material_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Obstacles/RockWest"]
+shape = SubResource("CylinderShape3D_rock")
+
+[node name="Avoidance" type="NavigationObstacle3D" parent="Obstacles/RockWest"]
+radius = 3.8
+height = 4.0
+avoidance_enabled = true
+
+[node name="RockEast" type="StaticBody3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 2, -6)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Obstacles/RockEast"]
+mesh = SubResource("CylinderMesh_rock")
+surface_material_override/0 = SubResource("Material_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Obstacles/RockEast"]
+shape = SubResource("CylinderShape3D_rock")
+
+[node name="Avoidance" type="NavigationObstacle3D" parent="Obstacles/RockEast"]
+radius = 3.8
+height = 4.0
+avoidance_enabled = true
+
+[node name="RockFarWest" type="StaticBody3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 2, 0)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Obstacles/RockFarWest"]
+mesh = SubResource("CylinderMesh_rock")
+surface_material_override/0 = SubResource("Material_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Obstacles/RockFarWest"]
+shape = SubResource("CylinderShape3D_rock")
+
+[node name="Avoidance" type="NavigationObstacle3D" parent="Obstacles/RockFarWest"]
+radius = 3.8
+height = 4.0
+avoidance_enabled = true
+
+[node name="RockFarEast" type="StaticBody3D" parent="Obstacles"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 2, 0)
+collision_layer = 2
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Obstacles/RockFarEast"]
+mesh = SubResource("CylinderMesh_rock")
+surface_material_override/0 = SubResource("Material_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Obstacles/RockFarEast"]
+shape = SubResource("CylinderShape3D_rock")
+
+[node name="Avoidance" type="NavigationObstacle3D" parent="Obstacles/RockFarEast"]
+radius = 3.8
+height = 4.0
+avoidance_enabled = true
+
+[node name="Buildings" type="Node3D" parent="."]
+
+[node name="PlayerHq" parent="Buildings" instance=ExtResource("1_hq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 25)
+team = 1
+
+[node name="EnemyHq" parent="Buildings" instance=ExtResource("1_hq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -25)
+team = 2
+
+[node name="CapturePoints" type="Node3D" parent="."]
+
+[node name="PointSouthWest" parent="CapturePoints" instance=ExtResource("2_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, 12)
+point_label = "SW"
+
+[node name="PointSouthEast" parent="CapturePoints" instance=ExtResource("2_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 12)
+point_label = "SE"
+
+[node name="PointCenter" parent="CapturePoints" instance=ExtResource("2_point")]
+income_value = 6.0
+point_label = "C"
+
+[node name="PointNorthWest" parent="CapturePoints" instance=ExtResource("2_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -12)
+point_label = "NW"
+
+[node name="PointNorthEast" parent="CapturePoints" instance=ExtResource("2_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, -12)
+point_label = "NE"

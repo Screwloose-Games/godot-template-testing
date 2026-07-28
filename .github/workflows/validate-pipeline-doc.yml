@@ -1,0 +1,79 @@
+name: Validate Pipeline Document
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'documentation/pipeline/**'
+      - 'schemas/asset-pipeline.schema.json'
+      - 'schemas/model-spec.schema.json'
+      - 'tools/pipeline/**'
+      # Re-run whenever a constant the document mirrors could have moved.
+      - '.github/scripts/validate-aseprite-files.py'
+      - '.github/scripts/validate-audio-files.py'
+      - '.github/ISSUE_TEMPLATE/**'
+      # Re-run (and re-test) the check itself whenever its own code changes.
+      - '.github/scripts/validate-pipeline-doc.py'
+      - '.github/scripts/test_validate_pipeline_doc.py'
+      - '.github/workflows/validate-pipeline-doc.yml'
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  validate-pipeline-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install pyyaml jsonschema
+
+      # Self-test first, like the sibling asset validators, so a broken checker
+      # cannot pass a broken document.
+      - name: Test validator
+        run: python .github/scripts/test_validate_pipeline_doc.py
+
+      # Confirms the screenshots in documentation/pipeline/images/ are still
+      # byte-identical to the payloads embedded in the Miro SVG they came from.
+      - name: Check extracted images match the source diagram
+        run: python tools/pipeline/extract_pipeline_images.py --check
+
+      # Schema, plus every cross-reference the schema cannot express: edge
+      # endpoints, reachability, image hashes, enforcement paths, regex examples,
+      # and drift between the document and the constants it mirrors.
+      - name: Validate pipeline document
+        id: validate-pipeline-doc
+        run: python .github/scripts/validate-pipeline-doc.py
+
+      # PIPELINE.md is generated. If it does not match what pipeline.yaml renders
+      # to, the human-readable view and the machine-readable source disagree.
+      - name: Check PIPELINE.md is up to date
+        run: python tools/pipeline/render_pipeline.py --check
+
+      # Only checks templates that have opted in by carrying the markers;
+      # templates without them are reported and left alone.
+      - name: Check generated issue-template blocks are up to date
+        run: python tools/pipeline/render_issue_templates.py --check
+
+      - name: Comment PR
+        if: ${{ !cancelled() && steps.validate-pipeline-doc.outputs.metadata != '' }}
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          comment-tag: pipeline-doc-check
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            # Asset pipeline document 🗺️
+            ${{ steps.validate-pipeline-doc.outputs.metadata }}
+            <br />
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}

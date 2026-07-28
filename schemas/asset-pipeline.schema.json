@@ -1,0 +1,574 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Screwloose-Games/godot-jam-template/schemas/asset-pipeline.schema.json",
+  "title": "Asset Pipeline Document",
+  "description": "Structured description of an asset production pipeline: its phases, the loops they run in, the artifacts they produce, and the automation that enforces each rule. Consumed by .github/scripts/validate-pipeline-doc.py and tools/pipeline/render_pipeline.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "title", "source", "roles", "tools", "images", "pipelines"],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Bump only for breaking changes to this schema."
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "source": { "$ref": "#/$defs/source" },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/role" }
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/tool" }
+    },
+    "images": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/image" }
+    },
+    "code_mirrors": {
+      "type": "array",
+      "description": "Values this document declares that are also hardcoded in scripts. The validator imports each symbol and fails if the two diverge, so a convention cannot be silently changed in only one place.",
+      "items": { "$ref": "#/$defs/code_mirror" }
+    },
+    "pipelines": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/pipeline" }
+    }
+  },
+
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "lower_snake_case identifier, unique within its collection."
+    },
+    "step_ref": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$",
+      "description": "A step id, always qualified as <phase_id>.<step_name>."
+    },
+    "repo_path": {
+      "type": "string",
+      "pattern": "^[^/\\\\][^\\\\]*$",
+      "not": { "pattern": "\\.\\." },
+      "description": "Repo-relative POSIX path. No leading slash, no backslashes, no parent traversal."
+    },
+    "extension": {
+      "type": "string",
+      "pattern": "^\\.[a-z0-9.]+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "diagram": {
+          "$ref": "#/$defs/repo_path",
+          "description": "The visual artifact this document was derived from, kept for provenance."
+        },
+        "exported_from": {
+          "type": "string",
+          "enum": ["miro", "excalidraw", "figma", "hand_authored"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["authoritative", "superseded"],
+          "description": "'superseded' means this YAML is now master and the diagram is a historical snapshot."
+        },
+        "captured": { "type": "string", "format": "date" },
+        "note": { "type": "string" }
+      }
+    },
+
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" }
+      }
+    },
+
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "file", "sha256", "width", "height", "alt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "file": {
+          "$ref": "#/$defs/repo_path",
+          "description": "Path relative to this document's own directory."
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "alt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Alt text. Required: the rendered view must stay readable without images."
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "svg_image_id": { "type": "string", "pattern": "^IMG_\\d+$" },
+            "board_x": { "type": "number" },
+            "board_y": { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "code_mirror": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "symbol", "value"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "path": { "$ref": "#/$defs/repo_path" },
+        "symbol": {
+          "type": "string",
+          "description": "Module-level name to import from `path` and compare against `value`."
+        },
+        "value": {
+          "type": ["string", "number", "boolean", "object", "array"],
+          "description": "The value this document asserts the symbol holds."
+        },
+        "note": { "type": "string" }
+      }
+    },
+
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["workflow", "script", "pre_commit", "godot_import", "review", "manual", "planned"],
+          "description": "'manual' means a human follows it; 'planned' means nothing checks it yet and that is known."
+        },
+        "path": { "$ref": "#/$defs/repo_path" },
+        "symbol": { "type": "string" },
+        "blocking": {
+          "type": "boolean",
+          "description": "Whether failing this check blocks a merge."
+        },
+        "note": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["workflow", "script", "pre_commit"] } } },
+          "then": {
+            "required": ["path"],
+            "description": "Automated enforcement must name the file that does it; the validator checks it exists."
+          }
+        }
+      ]
+    },
+
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "severity"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What a contributor must do, in the imperative."
+        },
+        "why": {
+          "type": "string",
+          "description": "The reason. Rules without a reason get ignored or cargo-culted."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["blocking", "warning", "advisory"]
+        },
+        "checklist": {
+          "type": "string",
+          "description": "One-line form used to generate issue-template subtask checkboxes."
+        },
+        "enforced_by": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/enforcement" }
+        }
+      }
+    },
+
+    "naming_pattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pattern", "regex", "examples"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable template, e.g. sm_{object}.gltf"
+        },
+        "regex": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Machine-checkable form of `pattern`. Must compile."
+        },
+        "description": { "type": "string" },
+        "examples": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["valid", "invalid"],
+          "properties": {
+            "valid": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" },
+              "description": "Every entry must match `regex`. Asserted by the validator."
+            },
+            "invalid": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" },
+              "description": "No entry may match `regex`. Asserted by the validator."
+            }
+          }
+        },
+        "enforced_by": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/enforcement" }
+        },
+        "deprecated_aliases": {
+          "type": "array",
+          "description": "Forms that were once correct. Recorded so old assets and old docs can be recognised rather than silently failing.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pattern", "note"],
+            "properties": {
+              "pattern": { "type": "string" },
+              "note": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "directory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "description"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "contains": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identifier" },
+          "description": "artifact_kind ids expected in this directory."
+        },
+        "example": { "type": "string" }
+      }
+    },
+
+    "conventions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["naming_patterns"],
+      "properties": {
+        "naming_patterns": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/naming_pattern" }
+        },
+        "directory_layout": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/directory" }
+        },
+        "rules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rule" },
+          "description": "Pipeline-wide rules that are not tied to one step."
+        }
+      }
+    },
+
+    "artifact_kind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "extensions"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "extensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/extension" }
+        },
+        "naming": {
+          "$ref": "#/$defs/identifier",
+          "description": "naming_pattern id this artifact's filename must match."
+        },
+        "location": { "type": "string" },
+        "generated": {
+          "type": "boolean",
+          "description": "True if a tool produces this file. Generated files must not be hand-renamed."
+        },
+        "required_siblings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identifier" },
+          "description": "artifact_kind ids that must be committed alongside this one."
+        },
+        "optional_siblings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "spec_file": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pattern", "schema"],
+          "properties": {
+            "pattern": { "type": "string" },
+            "schema": { "$ref": "#/$defs/repo_path" },
+            "required": { "type": "boolean" },
+            "note": { "type": "string" }
+          }
+        },
+        "validated_by": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/enforcement" }
+        }
+      }
+    },
+
+    "loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["is_iterative"],
+      "properties": {
+        "is_iterative": {
+          "type": "boolean",
+          "description": "Whether this phase is re-entered rather than passed through once."
+        },
+        "iterates_on": {
+          "type": "string",
+          "description": "What one turn of the loop covers, e.g. 'one asset from the asset list'."
+        },
+        "repeat_trigger": {
+          "type": "string",
+          "description": "What sends you back around."
+        },
+        "exit_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "What must be true to leave the loop."
+        }
+      }
+    },
+
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_kind"],
+      "properties": {
+        "artifact_kind": { "$ref": "#/$defs/identifier" },
+        "optional": { "type": "boolean" },
+        "note": { "type": "string" }
+      }
+    },
+
+    "screenshot_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image_id", "caption"],
+      "properties": {
+        "image_id": { "$ref": "#/$defs/identifier" },
+        "caption": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "faq_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "answer"],
+      "properties": {
+        "question": { "type": "string", "minLength": 1 },
+        "answer": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "agent_hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automatable"],
+      "properties": {
+        "automatable": {
+          "type": "string",
+          "enum": ["full", "partial", "none"],
+          "description": "'none' means it needs a human in a GUI (Blender, Substance Painter)."
+        },
+        "mcp_tools": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^mcp__[a-z0-9_-]+__[a-z0-9_]+$" }
+        },
+        "preconditions": { "type": "array", "items": { "type": "string" } },
+        "verification": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "How an agent proves it actually did the step."
+        },
+        "note": { "type": "string" }
+      }
+    },
+
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "role", "summary"],
+      "properties": {
+        "id": { "$ref": "#/$defs/step_ref" },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "role": { "$ref": "#/$defs/identifier" },
+        "tool": { "$ref": "#/$defs/identifier" },
+        "instructions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Ordered. What the person or agent actually does."
+        },
+        "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+        "inputs": { "type": "array", "items": { "$ref": "#/$defs/artifact_ref" } },
+        "outputs": { "type": "array", "items": { "$ref": "#/$defs/artifact_ref" } },
+        "screenshots": { "type": "array", "items": { "$ref": "#/$defs/screenshot_ref" } },
+        "faq": { "type": "array", "items": { "$ref": "#/$defs/faq_entry" } },
+        "opened_by_issue_template": { "$ref": "#/$defs/repo_path" },
+        "agent": { "$ref": "#/$defs/agent_hints" }
+      }
+    },
+
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "lane", "roles", "loop", "steps"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "lane": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Left-to-right column order, preserved from the original diagram."
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "loop": { "$ref": "#/$defs/loop" },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/step" }
+        }
+      }
+    },
+
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "kind"],
+      "properties": {
+        "from": { "$ref": "#/$defs/step_ref" },
+        "to": { "$ref": "#/$defs/step_ref" },
+        "kind": {
+          "type": "string",
+          "enum": ["forward", "rework", "repeat"],
+          "description": "'forward' advances; 'rework' sends an asset back to an earlier step; 'repeat' re-runs the same step. rework and repeat are what make the pipeline a set of loops rather than a line."
+        },
+        "label": { "type": "string" },
+        "condition": {
+          "type": "string",
+          "description": "When this edge is taken. Required for rework and repeat edges."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["rework", "repeat"] } } },
+          "then": { "required": ["condition"] }
+        }
+      ]
+    },
+
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "status", "phases", "edges", "entry_step"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["authoritative", "stub"],
+          "description": "'stub' documents only what is already enforced in code, and is knowingly incomplete."
+        },
+        "entry_step": {
+          "$ref": "#/$defs/step_ref",
+          "description": "Where an asset enters. Reachability is measured from here."
+        },
+        "conventions": { "$ref": "#/$defs/conventions" },
+        "artifact_kinds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/artifact_kind" }
+        },
+        "phases": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/phase" }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/edge" }
+        },
+        "open_questions": {
+          "type": "array",
+          "description": "Known unresolved conflicts. Recorded here rather than left as silent ambiguity.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "question"],
+            "properties": {
+              "id": { "$ref": "#/$defs/identifier" },
+              "question": { "type": "string", "minLength": 1 },
+              "context": { "type": "string" },
+              "blocks": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

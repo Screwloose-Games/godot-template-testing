@@ -59,6 +59,21 @@ fi
 git add -A && git commit -q -m "add music"
 HEAD_SHA="$(git rev-parse HEAD)"
 
+# Derive the repo identity instead of hardcoding it -- this file is the only
+# thing that differed between this template and every project forked from it,
+# so a hardcoded name silently travels into each fork and lies about which repo
+# the fake event belongs to.
+# Run gh from the real repo -- the working directory here is a scratch dir.
+REPO_SLUG="$(cd "$REPO_ROOT" && gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
+if [ -z "$REPO_SLUG" ]; then
+  # gh not installed or not authenticated: fall back to the origin remote.
+  ORIGIN_URL="$(git -C "$REPO_ROOT" config --get remote.origin.url 2>/dev/null || true)"
+  REPO_SLUG="$(printf '%s' "$ORIGIN_URL" | sed -E 's#^.*[:/]([^/]+/[^/]+?)(\.git)?$#\1#')"
+fi
+[ -n "$REPO_SLUG" ] || REPO_SLUG="local/godot-jam-template"
+REPO_OWNER="${REPO_SLUG%%/*}"
+REPO_NAME="${REPO_SLUG##*/}"
+
 cat > event.json <<EOF
 {
   "pull_request": {
@@ -67,9 +82,9 @@ cat > event.json <<EOF
     "head": { "sha": "$HEAD_SHA", "ref": "pr-branch" }
   },
   "repository": {
-    "name": "godot-jam-template",
-    "full_name": "Screwloose-Games/godot-jam-template",
-    "owner": { "login": "Screwloose-Games" }
+    "name": "$REPO_NAME",
+    "full_name": "$REPO_SLUG",
+    "owner": { "login": "$REPO_OWNER" }
   }
 }
 EOF

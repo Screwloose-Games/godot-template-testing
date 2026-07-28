@@ -1,0 +1,77 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://examples/3d/realtime_strategy_example/buildings/rts_hq.gd" id="1_hq"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hq"]
+size = Vector3(6, 4, 6)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(6, 4, 6)
+
+[sub_resource type="BoxMesh" id="BoxMesh_roof"]
+size = Vector3(4.6, 1.6, 4.6)
+
+[sub_resource type="TorusMesh" id="TorusMesh_ring"]
+inner_radius = 4.3
+outer_radius = 4.8
+rings = 3
+ring_segments = 24
+
+[sub_resource type="QuadMesh" id="QuadMesh_bar"]
+size = Vector2(4, 0.35)
+
+[sub_resource type="StandardMaterial3D" id="Material_bar_back"]
+render_priority = 1
+shading_mode = 0
+albedo_color = Color(0.0784314, 0.0784314, 0.0941176, 1)
+billboard_mode = 1
+billboard_keep_scale = true
+cull_mode = 2
+no_depth_test = true
+
+[sub_resource type="StandardMaterial3D" id="Material_bar_fill"]
+render_priority = 2
+shading_mode = 0
+albedo_color = Color(0.290196, 0.87451, 0.376471, 1)
+billboard_mode = 1
+billboard_keep_scale = true
+cull_mode = 2
+no_depth_test = true
+
+[node name="RtsHq" type="StaticBody3D"]
+script = ExtResource("1_hq")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+shape = SubResource("BoxShape3D_hq")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+mesh = SubResource("BoxMesh_body")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.8, 0)
+mesh = SubResource("BoxMesh_roof")
+
+[node name="SelectionRing" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+visible = false
+mesh = SubResource("TorusMesh_ring")
+
+[node name="HealthBar" type="Node3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.6, 0)
+visible = false
+
+[node name="HealthBarBack" type="MeshInstance3D" parent="HealthBar"]
+mesh = SubResource("QuadMesh_bar")
+surface_material_override/0 = SubResource("Material_bar_back")
+
+[node name="HealthBarFill" type="MeshInstance3D" parent="HealthBar"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.02)
+mesh = SubResource("QuadMesh_bar")
+surface_material_override/0 = SubResource("Material_bar_fill")

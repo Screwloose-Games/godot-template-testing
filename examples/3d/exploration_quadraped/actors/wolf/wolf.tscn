@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://c2a4ootlm2r62"]
+
+[ext_resource type="Script" uid="uid://bgtp8ybcud0u4" path="res://examples/3d/exploration_quadraped/actors/wolf/wolf_controller.gd" id="1_wolf"]
+[ext_resource type="PackedScene" path="res://examples/3d/exploration_quadraped/actors/wolf/wolf_animator.tscn" id="2_animator"]
+[ext_resource type="Script" uid="uid://chdl3q04obe4r" path="res://examples/3d/exploration_quadraped/actors/wolf/wolf_input_actions.gd" id="3_input"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.3
+height = 0.98
+
+[node name="Wolf" type="CharacterBody3D" unique_id=267477899]
+collision_layer = 2
+slide_on_ceiling = false
+floor_max_angle = 0.9599
+floor_snap_length = 0.3
+script = ExtResource("1_wolf")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1192893215]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.49, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Animator" parent="." unique_id=1161205570 instance=ExtResource("2_animator")]
+unique_name_in_owner = true
+
+[node name="AnimationTree" parent="Animator/ModelPivot/Model" index="2"]
+root_node = NodePath("%AnimationTree/..")
+parameters/Airborne/AirRate/scale = 1.0
+parameters/Ground/GaitSpace/blend_position = 0.0
+parameters/Ground/GaitRate/scale = 1.0
+parameters/Ground/IdleMove/blend_amount = 0.0
+
+[node name="InputActions" type="Node" parent="." unique_id=876307883]
+script = ExtResource("3_input")
+
+[editable path="Animator"]

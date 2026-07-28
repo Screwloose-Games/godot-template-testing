@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Screwloose-Games/godot-jam-template/schemas/model-spec.schema.json",
+  "title": "glTF Model Spec",
+  "description": "Per-model acceptance spec, saved next to a glTF as `<model>.gltf.spec.yaml`. Read by tools/gltf-validator/validate_gltf.py, which reports OK/FAIL per key in the PR comment posted by .github/workflows/validate-gltf-files.yml.\n\nEvery key is optional: a key that is absent is simply not checked. A model with no spec file at all passes silently, so adding a spec is how a model gains acceptance criteria.\n\nThis schema is transcribed from evaluate_model_against_spec() in tools/gltf-validator/validate_gltf.py. If that function changes, change this file with it.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "width": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Expected X extent in metres. Passes when the measured scene bounds are within +/-10%."
+    },
+    "height": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Expected Y extent in metres. Passes when the measured scene bounds are within +/-10%."
+    },
+    "depth": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Expected Z extent in metres. Passes when the measured scene bounds are within +/-10%."
+    },
+    "up_direction": {
+      "type": "string",
+      "enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"],
+      "default": "+Y",
+      "description": "Which axis points up, in glTF space. Normally '+Y': it is the glTF convention, what Godot expects, and what Blender's +Z up converts to on export. Measured from the node graph, so a Z-up export fails here. (Before gltf_axes.py this check compared the spec string against the literal '+Y' and never looked at the model, so every asset passed.)"
+    },
+    "facing_direction": {
+      "type": "string",
+      "enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"],
+      "default": "-Z",
+      "description": "Which axis the model faces, in glTF space. This project's convention is '-Z': artists point the model down +Y in Blender, and a correct glTF export converts that to -Z. Do not put the Blender axis here -- the spec describes the exported file. Measured against a real export, not assumed: see assets/3d/example_cubes_facing. '-Z' is Godot's forward (Vector3.FORWARD), which is deliberately not the glTF spec's own +Z-front convention -- matching the engine that loads these files matters more here than matching viewers.\n\nThis field is a declaration for reviewers, not something CI verifies. Nothing in a glTF marks which side of a mesh is the face, so no tool can read the facing off the geometry: two exports of the same model built facing opposite ways both report the same axis once their transforms are applied. What tools/gltf-validator/gltf_axes.py measures is the rotation on the node chain, which catches an export that skipped or botched the axis conversion and nothing more. Confirm the real facing from the render in the PR comment."
+    },
+    "allow_unapplied_transforms": {
+      "type": "boolean",
+      "default": false,
+      "description": "Opt out of the unapplied-transform check for this model. Off by default: a node chain carrying a rotation or a scale normally means the artist exported without 'Object > Apply' in Blender, or the export skipped the Y-up conversion. Both leave the same rotation on the same node, and both make facing_direction and up_direction describe that node rather than the geometry. Set true only when the node transform is genuinely intended -- in which case up_direction and facing_direction should describe the rotated result. A node offset from the origin is only ever reported, never failed, so it needs no opt-out. Measured by tools/gltf-validator/gltf_transforms.py."
+    },
+    "poly_count_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum triangle count across all meshes in the scene. Passes when poly_count <= budget."
+    },
+    "root_node_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A node with exactly this name must exist somewhere in the glTF. Matched case-sensitively against every node, not just the scene roots."
+    },
+    "collision_expected": {
+      "type": "boolean",
+      "description": "Whether the model should carry Godot collision geometry. Detected by a node name ending in -col, -colonly, -convcol or -convcolonly (case-insensitive). The check asserts presence matches this flag, so `false` fails if collision geometry IS present."
+    },
+    "navigation_expected": {
+      "type": "boolean",
+      "description": "Whether the model should carry a navmesh. Detected by a node name ending in -navmesh (case-insensitive). Like collision_expected, `false` fails if a navmesh IS present."
+    },
+    "min_material_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Minimum number of glTF materials. Passes when the model has at least this many."
+    },
+    "textures_expected": {
+      "type": "array",
+      "description": "Textures that must be referenced by the model. Matched as a SUBSTRING against each image URI, so 'base_color' matches 'RainBarrel_Base_Color.png' only if the case also matches -- give the name as it appears in the file.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "expected": {
+            "type": "boolean",
+            "default": true,
+            "description": "Set false to document a texture that is deliberately absent. NOTE: the validator only fails on missing textures where expected is true; it does not currently fail when an expected:false texture is present."
+          }
+        }
+      }
+    },
+    "animations_expected": {
+      "type": "array",
+      "description": "Animations that must exist in the glTF. Matched by EXACT name, unlike textures_expected.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -1,7 +1,11 @@
 name: "Build Godot Game"
 
+# Set the repo variable GODOT_VERSION to bump the engine for every workflow at
+# once. The literal fallback matters: a bare ${{ vars.GODOT_VERSION }} in an
+# unconfigured fork resolves to an empty string and yields the image tag
+# "barichello/godot-ci:", which fails to pull with a confusing error.
 env:
-  GODOT_VERSION: 4.7.1
+  GODOT_VERSION: ${{ vars.GODOT_VERSION || '4.7.1' }}
 
 on:
   # Tagging a release (e.g. `git tag v1.2.0 && git push origin v1.2.0`, or
@@ -17,7 +21,7 @@ jobs:
     permissions:
       contents: write
     container:
-      image: barichello/godot-ci:4.7.1
+      image: barichello/godot-ci:${{ vars.GODOT_VERSION || '4.7.1' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,10 +33,47 @@ jobs:
       - name: Create staging directory
         run: mkdir -v -p build/web
 
-      - name: Build
-        # run: godot -v --export-release --headless --export-template=no "Web"
-        run: godot --headless --verbose --export-release "Web" ../build/web/index.html
+      # A cold checkout has no .godot/ import cache and the presets export
+      # `all_resources`, so import before packing.
+      - name: Import resources
+        run: godot --headless --path . --import
         continue-on-error: true
+
+      # `<path>` in `--export-release <preset> <path>` resolves against the
+      # PROJECT directory, not the shell's cwd, and the target directory must
+      # already exist (`godot --help`). The project dir IS the workspace here,
+      # so the old `../build/web/index.html` pointed one level ABOVE the
+      # checkout: every run died with "Target folder does not exist", the
+      # tolerated exit code hid it, and the check below then failed the job.
+      # Upstream godot-ci gets away with `../` only because it cd's into a
+      # project subdirectory first.
+      #
+      # Godot's web export exits non-zero on warnings that don't actually break
+      # the build, which is why this tolerates a bad exit code. It does NOT
+      # tolerate a missing artifact -- without the check below, a genuinely
+      # failed export sails through and ships an empty zip to the release.
+      - name: Build
+        run: godot --headless --verbose --path . --export-release "Web" "build/web/index.html"
+        continue-on-error: true
+
+      - name: Verify web export produced output
+        run: |
+          if [ ! -s build/web/index.html ]; then
+            echo "::error::Web export did not produce build/web/index.html"
+            exit 1
+          fi
+
+      # ATTRIBUTION.md is a non-resource file: it ships only because the Web
+      # preset's include_filter lists *.md. Dropping that filter does NOT fail
+      # the export -- the credits screen just renders its fallback at runtime --
+      # so assert the file really is inside the pack. PCK directory tables store
+      # resource paths as plain UTF-8, so a byte-grep is enough.
+      - name: Verify ATTRIBUTION.md is in the exported pack
+        run: |
+          if ! grep -a -q 'ATTRIBUTION\.md' build/web/index.pck; then
+            echo "::error::ATTRIBUTION.md is missing from index.pck. Check include_filter in export_presets.cfg."
+            exit 1
+          fi
 
       - name: Add coi-service-worker
         run: |
@@ -40,8 +81,12 @@ jobs:
           mv coi-serviceworker/coi-serviceworker.js build/web/coi-serviceworker.js
           sed -i '3 i <script src="coi-serviceworker.js"></script>' build/web/index.html
 
+      # itch.io's HTML5 player requires index.html at the ROOT of the zip.
+      # `zip -r game_web.zip build/web` nested everything under build/web/ and
+      # the player 404s on it.
       - name: Zip Web artifacts
-        run: zip -r game_web.zip build/web
+        working-directory: build/web
+        run: zip -r "$GITHUB_WORKSPACE/game_web.zip" .
 
       - name: Upload Web artifacts
         uses: actions/upload-artifact@v4
@@ -54,7 +99,7 @@ jobs:
       contents: write
 
     container:
-      image: barichello/godot-ci:4.7.1
+      image: barichello/godot-ci:${{ vars.GODOT_VERSION || '4.7.1' }}
 
     steps:
       - name: Checkout
@@ -67,8 +112,19 @@ jobs:
       - name: Create staging directory
         run: mkdir -v -p build/linux
 
+      - name: Import resources
+        run: godot --headless --path . --import
+        continue-on-error: true
+
+      # Preset name is "Linux", not "Linux/X11" -- that was the Godot 3 name and
+      # does not match export_presets.cfg.
+      #
+      # The preset name must be the token IMMEDIATELY after --export-release, and
+      # neither --output nor --export-template exist in Godot 4. The old form made
+      # Godot read "--export-template=no" as the preset name and abort with
+      # "Invalid export preset name", so this job could never have exported.
       - name: Build for Linux
-        run: godot -v --export-release --headless --export-template=no "Linux/X11" --path . --output "build/linux/game.x86_64"
+        run: godot --headless --verbose --path . --export-release "Linux" "build/linux/game.x86_64"
 
       - name: Zip Linux artifacts
         run: zip -r game_linux.zip build/linux
@@ -84,7 +140,7 @@ jobs:
       contents: write
 
     container:
-      image: barichello/godot-ci:4.7.1
+      image: barichello/godot-ci:${{ vars.GODOT_VERSION || '4.7.1' }}
 
     steps:
       - name: Checkout
@@ -97,8 +153,15 @@ jobs:
       - name: Create staging directory
         run: mkdir -v -p build/windows
 
+      - name: Import resources
+        run: godot --headless --path . --import
+        continue-on-error: true
+
+      # Output must be .exe -- the previous .x86_64 name produced a Windows
+      # binary Windows itself will not execute. See the Linux job for why
+      # --output / --export-template are gone.
       - name: Build for windows
-        run: godot -v --export-release --headless --export-template=no "Windows Desktop" --path . --output "build/windows/game.x86_64"
+        run: godot --headless --verbose --path . --export-release "Windows Desktop" "build/windows/game.exe"
 
       - name: Zip Windows artifacts
         run: zip -r game_windows.zip build/windows
@@ -108,8 +171,47 @@ jobs:
         with:
           name: game_windows
           path: game_windows.zip
+  macos:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    container:
+      image: barichello/godot-ci:${{ vars.GODOT_VERSION || '4.7.1' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Move export templates into position
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      - name: Create staging directory
+        run: mkdir -v -p build/macos
+
+      - name: Import resources
+        run: godot --headless --path . --import
+        continue-on-error: true
+
+      # The macOS preset exports a .zip containing the .app bundle, so the
+      # output path is a zip rather than a bare binary. The build is UNSIGNED --
+      # Gatekeeper will warn on first launch, and users need right-click > Open.
+      # Signing needs six Apple secrets and is deliberately out of scope.
+      # See the Linux job for why --output / --export-template are gone.
+      - name: Build for macOS
+        run: godot --headless --verbose --path . --export-release "macOS" "build/macos/game.zip"
+
+      - name: Zip macOS artifacts
+        run: zip -r game_macos.zip build/macos
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: game_macos
+          path: game_macos.zip
   release:
-    needs: [web, linux, windows]
+    needs: [web, linux, windows, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -119,20 +221,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up GitVersion
-        uses: gittools/actions/gitversion/setup@v0.9.15
-        with:
-          versionSpec: '5.x'
-
-      - name: Execute GitVersion
-        uses: gittools/actions/gitversion/execute@v0.9.15
-        with:
-          useConfigFile: true
-          configFilePath: GitVersion.yml
-
-      - name: Get branch name
-        id: get_branch
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+      # GitVersion used to run here against a GitVersion.yml that has never
+      # existed in this repo, so the release job failed on every tag push. The
+      # `v*` tag trigger already carries the version, so read it from the ref
+      # instead -- no config file, no extra actions.
+      - name: Resolve release version
+        id: version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME}"
+          else
+            # workflow_dispatch has no tag; label the build by short SHA so a
+            # manual run still produces a uniquely named draft.
+            version="manual-$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Release version: ${version}"
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -149,51 +253,36 @@ jobs:
         with:
           name: game_windows
 
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: game_macos
+
+      - name: Rename artifacts for release
+        run: |
+          mv game_web.zip Godot_Game_Web.zip
+          mv game_linux.zip Godot_Game_Linux.zip
+          mv game_windows.zip Godot_Game_Windows.zip
+          mv game_macos.zip Godot_Game_macOS.zip
+
+      # Replaces actions/create-release@v1 + actions/upload-release-asset@v1,
+      # both archived by GitHub. This one action creates the release and
+      # attaches every asset in a single step.
+      # Manual runs publish as a draft so a dispatch can never be mistaken for a
+      # real release.
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{env.GitVersion_MajorMinorPatch}}
-          release_name: ${{env.GitVersion_MajorMinorPatch}}
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
           body: |
-            Release notes for ${{env.GitVersion_MajorMinorPatch}}
-          draft: false
+            Release ${{ steps.version.outputs.version }}
+
+            macOS builds are unsigned -- right-click the app and choose Open on first launch.
+          draft: ${{ github.ref_type != 'tag' }}
           prerelease: false
-    
-      - name: test
-        run: ls
-
-      - name: Upload Web Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: game_web.zip
-          asset_name: Godot_Game_Web.zip
-          asset_content_type: application/zip
-
-      - name: Upload Linux Release Asset
-        id: upload-linux-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: game_linux.zip
-          asset_name: Godot_Game_Linux.zip
-          asset_content_type: application/zip
-
-      - name: Upload Windows Release Asset
-        id: upload-windows-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: game_windows.zip
-          asset_name: Godot_Game_Windows.zip
-          asset_content_type: application/zip
+          files: |
+            Godot_Game_Web.zip
+            Godot_Game_Linux.zip
+            Godot_Game_Windows.zip
+            Godot_Game_macOS.zip

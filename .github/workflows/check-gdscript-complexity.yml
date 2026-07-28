@@ -1,12 +1,13 @@
 name: Check GDScript Complexity
 
 on:
+  workflow_dispatch:
+  # No `branches:` filter on purpose -- a validator that only runs on PRs into
+  # main silently skips PRs into a jam or feature branch, which is exactly when
+  # the feedback is most useful.
   pull_request:
-    branches: [ main ]
     paths:
       - '**/*.gd'
-  # push:
-  #   branches: [ main ]
 permissions:
   pull-requests: write
 jobs:
@@ -26,6 +27,8 @@ jobs:
         files_ignore: 'addons/**'
 
     # 2) install Godot‐GDScript‐Toolkit so gdlint & gdradon are on PATH
+    # UNPINNED third-party action. See "Pinning third-party actions" in
+    # .github/workflows/README.md for how to resolve this to a commit SHA.
     - uses: Scony/godot-gdscript-toolkit@master
 
     # # 3) (optional) gdformat check

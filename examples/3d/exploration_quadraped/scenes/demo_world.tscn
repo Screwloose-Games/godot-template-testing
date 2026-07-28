@@ -1,0 +1,192 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="../materials/ground.tres" id="1_da435"]
+[ext_resource type="Material" path="../materials/test_geometry.tres" id="2_1464v"]
+[ext_resource type="PackedScene" path="../actors/wolf/wolf.tscn" id="3_4qpdp"]
+[ext_resource type="Script" path="../actors/wolf/wolf_controller.gd" id="4_n31jq"]
+[ext_resource type="PackedScene" path="../components/camera/orbit_camera_rig.tscn" id="5_cwcxc"]
+[ext_resource type="Script" path="../components/camera/orbit_camera_rig.gd" id="6_qtveh"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_33be7"]
+sky_top_color = Color(0.35, 0.5, 0.72, 1)
+sky_horizon_color = Color(0.72, 0.76, 0.78, 1)
+ground_bottom_color = Color(0.2, 0.21, 0.2, 1)
+ground_horizon_color = Color(0.6, 0.62, 0.6, 1)
+
+[sub_resource type="Sky" id="Sky_ll1pc"]
+sky_material = SubResource("ProceduralSkyMaterial_33be7")
+
+[sub_resource type="Environment" id="Environment_jgk0q"]
+background_mode = 2
+sky = SubResource("Sky_ll1pc")
+ambient_light_source = 3
+ambient_light_energy = 0.3
+tonemap_mode = 2
+tonemap_exposure = 0.85
+fog_enabled = true
+fog_light_color = Color(0.62, 0.68, 0.72, 1)
+fog_density = 0.0022
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ui73o"]
+size = Vector3(60, 1, 60)
+
+[sub_resource type="BoxMesh" id="BoxMesh_rfelh"]
+material = ExtResource("1_da435")
+size = Vector3(60, 1, 60)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_w2ry6"]
+size = Vector3(4, 1, 9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_w7j4q"]
+material = ExtResource("2_1464v")
+size = Vector3(4, 1, 9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8mspe"]
+size = Vector3(4, 1, 9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_sane6"]
+material = ExtResource("2_1464v")
+size = Vector3(4, 1, 9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2wp0k"]
+size = Vector3(4, 1, 9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ike0u"]
+material = ExtResource("2_1464v")
+size = Vector3(4, 1, 9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_18r7x"]
+size = Vector3(4, 1, 9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_8njo4"]
+material = ExtResource("2_1464v")
+size = Vector3(4, 1, 9)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_lws8g"]
+size = Vector3(4, 0.2, 2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_q7k23"]
+material = ExtResource("2_1464v")
+size = Vector3(4, 0.2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_seb5k"]
+size = Vector3(4, 0.4, 2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_3g216"]
+material = ExtResource("2_1464v")
+size = Vector3(4, 0.4, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p0g0p"]
+size = Vector3(10, 2.5, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_iyyo4"]
+material = ExtResource("2_1464v")
+size = Vector3(10, 2.5, 0.5)
+
+[node name="DemoWorld" type="Node3D" unique_id=1755753181]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=585972014]
+environment = SubResource("Environment_jgk0q")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=248151240]
+transform = Transform3D(-0.64278764, 0.5416752, -0.5416752, 0, 0.70710677, 0.70710677, 0.76604444, 0.45451948, -0.45451948, 0, 0, 0)
+light_energy = 0.85
+shadow_enabled = true
+shadow_bias = 0.03
+shadow_normal_bias = 1.5
+directional_shadow_max_distance = 60.0
+
+[node name="Ground" type="StaticBody3D" parent="." unique_id=796170004]
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground" unique_id=76064463]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("BoxShape3D_ui73o")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=536638472]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+mesh = SubResource("BoxMesh_rfelh")
+
+[node name="TestGeometry" type="Node3D" parent="." unique_id=1460531742]
+
+[node name="Ramp10" type="StaticBody3D" parent="TestGeometry" unique_id=1506323785]
+transform = Transform3D(1, 0, 0, 0, 0.9848077, 0.17364818, 0, -0.17364818, 0.9848077, -14, -0.15, 8)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestGeometry/Ramp10" unique_id=35255326]
+shape = SubResource("BoxShape3D_w2ry6")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestGeometry/Ramp10" unique_id=947930018]
+mesh = SubResource("BoxMesh_w7j4q")
+
+[node name="Ramp25" type="StaticBody3D" parent="TestGeometry" unique_id=1004808547]
+transform = Transform3D(1, 0, 0, 0, 0.90630776, 0.42261827, 0, -0.42261827, 0.90630776, -8, -0.15, 8)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestGeometry/Ramp25" unique_id=1513138]
+shape = SubResource("BoxShape3D_8mspe")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestGeometry/Ramp25" unique_id=1351923782]
+mesh = SubResource("BoxMesh_sane6")
+
+[node name="Ramp40" type="StaticBody3D" parent="TestGeometry" unique_id=813121887]
+transform = Transform3D(1, 0, 0, 0, 0.76604444, 0.6427876, 0, -0.6427876, 0.76604444, -2, -0.15, 8)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestGeometry/Ramp40" unique_id=1153034471]
+shape = SubResource("BoxShape3D_2wp0k")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestGeometry/Ramp40" unique_id=1619842181]
+mesh = SubResource("BoxMesh_ike0u")
+
+[node name="Ramp55" type="StaticBody3D" parent="TestGeometry" unique_id=2009525081]
+transform = Transform3D(1, 0, 0, 0, 0.57357645, 0.81915206, 0, -0.81915206, 0.57357645, 4, -0.15, 8)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestGeometry/Ramp55" unique_id=641759003]
+shape = SubResource("BoxShape3D_18r7x")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestGeometry/Ramp55" unique_id=364492916]
+mesh = SubResource("BoxMesh_8njo4")
+
+[node name="Step20" type="StaticBody3D" parent="TestGeometry" unique_id=2024732916]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.1, -4)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestGeometry/Step20" unique_id=257260197]
+shape = SubResource("BoxShape3D_lws8g")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestGeometry/Step20" unique_id=1564898547]
+mesh = SubResource("BoxMesh_q7k23")
+
+[node name="Step40" type="StaticBody3D" parent="TestGeometry" unique_id=941253127]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0.2, -4)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestGeometry/Step40" unique_id=813277141]
+shape = SubResource("BoxShape3D_seb5k")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestGeometry/Step40" unique_id=1453803399]
+mesh = SubResource("BoxMesh_3g216")
+
+[node name="Wall" type="StaticBody3D" parent="TestGeometry" unique_id=1300335123]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 1.25, -8)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestGeometry/Wall" unique_id=113458635]
+shape = SubResource("BoxShape3D_p0g0p")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestGeometry/Wall" unique_id=1481920740]
+mesh = SubResource("BoxMesh_iyyo4")
+
+[node name="Wolf" type="CharacterBody3D" parent="." unique_id=614107394 instance=ExtResource("3_4qpdp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+collision_layer = 2
+slide_on_ceiling = false
+floor_max_angle = 0.9599
+floor_snap_length = 0.3
+script = ExtResource("4_n31jq")
+
+[node name="CameraRig" type="Node3D" parent="." unique_id=1092902096 node_paths=PackedStringArray("target") instance=ExtResource("5_cwcxc")]
+script = ExtResource("6_qtveh")
+target = NodePath("../Wolf")
