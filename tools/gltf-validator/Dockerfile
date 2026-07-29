@@ -1,9 +1,27 @@
 # gltf-renderer/Dockerfile
-FROM python:3.10-slim
+#
+# The Debian release is pinned, not just the Python version. `python:3.10-slim`
+# floats onto whatever Debian is current, and that moved to trixie -- which
+# dropped libgl1-mesa-glx entirely, so every build of this image started failing
+# with "no installation candidate" for a Dockerfile nobody had touched. The pip
+# pins below already carry a comment about unpinned inputs breaking builds on
+# somebody else's release schedule; the base image is the same hazard.
+#
+# Staying on bookworm rather than moving to trixie: trixie also carries the
+# 64-bit time_t transition, which renames libglib2.0-0 to libglib2.0-0t64 and
+# similar across the graph. Chasing those renames buys nothing here.
+FROM python:3.10-slim-bookworm
 
-# Install system dependencies
+# Install system dependencies.
+#
+# libgl1 + libglx-mesa0 replace libgl1-mesa-glx, which was a transitional
+# package removed after bullseye. libgl1 provides libGL.so.1 and libglx-mesa0
+# provides the Mesa GLX driver -- together they are what that one name used to
+# pull in. pyrender reaches OpenGL through GLX on the Xvfb display that
+# entrypoint.sh starts, so both halves are needed.
 RUN apt-get update && apt-get install -y \
-  libgl1-mesa-glx \
+  libgl1 \
+  libglx-mesa0 \
   libgl1-mesa-dri \
   xvfb \
   libosmesa6 \
