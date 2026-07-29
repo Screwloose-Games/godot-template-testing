@@ -86,13 +86,19 @@ jobs:
           python .github/scripts/validate-model-files.py \
             --changed-files-json .github/outputs/all_changed_files.json
 
-      # GHCR rejects uppercase in image names but the owner slug is mixed case,
-      # so lowercase it. Derived rather than hardcoded so forks pull the image
-      # their own build-and-push-gltf-validator.yml produced.
+      # GHCR rejects uppercase in image names but the repo slug is mixed case, so
+      # lowercase it. Derived rather than hardcoded so every repo and fork pulls
+      # the image its own build-and-push-gltf-validator.yml produced.
+      #
+      # Scoped by GITHUB_REPOSITORY rather than GITHUB_REPOSITORY_OWNER: owner
+      # alone collides across repos in one org, and the loser of that collision
+      # cannot push its image at all (403). See the longer note on the matching
+      # step in build-and-push-gltf-validator.yml -- these two expressions must
+      # stay identical, or this job pulls an image that job never pushed.
       - name: Resolve validator image
         id: image
         if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/gltf-validator:latest" >> "$GITHUB_OUTPUT"
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}/gltf-validator:latest" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}

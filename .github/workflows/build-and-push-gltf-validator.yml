@@ -20,12 +20,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # GHCR rejects uppercase characters in image names, but the owner slug is
-      # mixed case (Screwloose-Games). Lowercase it rather than hardcoding the
-      # org, so a fork pushes to its own registry instead of failing on a 403.
+      # GHCR rejects uppercase characters in image names, but the repo slug is
+      # mixed case (Screwloose-Games/...), so lowercase it.
+      #
+      # Derived from GITHUB_REPOSITORY, not GITHUB_REPOSITORY_OWNER. Owner alone
+      # is not unique: every repo in the org resolves to the same
+      # ghcr.io/<org>/gltf-validator, and a GHCR package belongs to whichever
+      # repo first created it. A second repo in the same org then gets
+      # 403 Forbidden pushing to a package it does not own -- with `packages:
+      # write` set and the login step reporting success, because the token is
+      # fine and the authorisation is per-package.
+      #
+      # Including the repo gives every repo and fork its own package, linked to
+      # itself automatically on first push. That is what the previous comment
+      # here claimed to do; scoping by owner only ever achieved it for forks in
+      # a *different* account.
+      #
+      # Must stay in step with the same expression in validate-gltf-files.yml --
+      # if they disagree, the PR pulls an image this job never pushed.
       - name: Resolve image name
         id: image
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/gltf-validator" >> "$GITHUB_OUTPUT"
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}/gltf-validator" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
