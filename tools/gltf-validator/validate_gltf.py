@@ -90,9 +90,22 @@ def create_3d_preview_url(gltf_filepth: str, gltf) -> str:
     return complete_url
 
 def load_gltf_with_trimesh(filepath: str) -> trimesh.Scene:
-    # Trimesh can load glTF directly
-    scene = trimesh.load_scene(filepath)
-    return scene
+    """Load a model as a trimesh Scene, on whichever trimesh is installed.
+
+    trimesh.load_scene() only exists from trimesh 4.6. The image pins 4.4.9, where
+    the attribute is simply absent, so every model came back "Failed to load GLTF
+    file: module 'trimesh' has no attribute 'load_scene'" -- caught per-model, so
+    the step still exited 0 and the PR comment rendered ten ❌ rows with no
+    picture and no preview link.
+
+    load(force="scene") is the spelling that works on both, and the force matters
+    independently of the version: plain load() returns a Trimesh for a
+    single-mesh file, and pyrender.Scene.from_trimesh_scene() only takes a Scene.
+    """
+    loader = getattr(trimesh, "load_scene", None)
+    if loader is not None:
+        return loader(filepath)
+    return trimesh.load(filepath, force="scene")
 
 
 
