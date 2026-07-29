@@ -230,14 +230,19 @@ Put a stand-in glTF in the final destination directory before doing any real wor
 
 Build the real geometry.
 
-1. Model to the dimensions on the issue, in metres.
-2. Set the pivot to the right place - usually bottom centre - and align it to the world origin.
-3. UV unwrap, creating islands as needed.
-4. Check the normals.
-5. Keep the poly count inside the asset's budget.
+1. If the asset is a vehicle, build it with tools/blender-vehicle/ rather than by hand - it produces the geometry, UVs, a baked atlas, collision proxies and a validated glTF from one Python file, and its README records the traps that cost a rebuild to find. Get the blockout approved before the bake.
+2. Model to the dimensions on the issue, in metres.
+3. Set the pivot to the right place - usually bottom centre - and align it to the world origin.
+4. UV unwrap, creating islands as needed.
+5. Check the normals.
+6. Keep the poly count inside the asset's budget.
 
 - **Required** — No mesh may have another mesh as a child.
   - *Why:* It breaks Godot's collision shape generation.
+- **Required** — Do not end an object name in a word Godot's importer reads as a node type - wheel, vehicle, rigid, occ, noimp, cycle or loop - unless that node type is what you want.
+  - *Why:* Godot's scene importer reinterprets node names, and it matches "_wheel" and "$wheel" as well as "-wheel". That is the same mechanism that makes -convcolonly work, so it cannot be switched off, and it means an ordinary descriptive name can silently change a node's class: a mesh named steering_wheel arrives as a VehicleWheel3D, a physics node that only functions parented to a VehicleBody3D. The file is valid glTF throughout, so nothing but this check can see it. Rename the object - steering_wheel_rim - or, if the Godot node type really is the intent, list the suffix in the spec's godot_node_suffixes_allowed.
+- **Required** — Keep collision proxies inside the visual mesh they stand in for.
+  - *Why:* The size checks measure the whole file, so a proxy sticking out past the art becomes the model's declared width, height or depth - and the resulting failure points at a number that is invisible in every render. A centimetre of slack is allowed, because a proxy hugging a curved surface routinely pokes a few millimetres past the faceted mesh approximating it.
 - **Required** — Align the pivot point to the world origin.
   - *Why:* Otherwise every placement in every level carries a compensating offset that nobody remembers to apply.
 - **Required** — Point the model's front down +Y in Blender.
@@ -245,7 +250,7 @@ Build the real geometry.
 - **Required** — Stay within the poly count budget in the model's spec file.
   - *Why:* This is a web-first jam build; the frame budget is small.
 
-<sub>For agents: not automatable (needs a GUI).</sub>
+<sub>For agents: partly automatable.</sub>
 
 ### Texture the asset
 
@@ -457,6 +462,7 @@ Record the model's acceptance criteria as {model}.gltf.spec.yaml so CI can check
 4. Set up_direction to "+Y" and facing_direction to "-Z" - these are glTF-space axes, not Blender's.
 5. Declare collision_expected and navigation_expected.
 6. List the textures the model must reference.
+7. Check it before you commit: python .github/scripts/validate-model-files.py path/to/sm_thing.gltf. It prints the model's measured width, height, depth and triangle count, so you can read the real numbers off a model with no spec and write them down rather than guessing. It also rejects a misspelled key, which CI used to ignore in silence.
 
 - **Required** — Name the spec after the model's full filename, including .gltf.
   - *Why:* The validator looks for exactly {gltf_path}.spec.yaml and silently skips anything else.

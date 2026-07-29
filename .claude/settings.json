@@ -1,5 +1,5 @@
 {
-      "hooks": {
+  "hooks": {
     "PostToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
@@ -16,8 +16,23 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          {"type": "command", "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.gd$'; then gdformat $CLAUDE_FILE_PATHS && gdlint $CLAUDE_FILE_PATHS; fi"},
-          {"type": "command", "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.py$'; then uv run ruff check --fix $CLAUDE_FILE_PATHS && uv run pytest -q -x; fi"}
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.gd$'; then gdformat $CLAUDE_FILE_PATHS && gdlint $CLAUDE_FILE_PATHS; fi"
+          }
+        ]
+      },
+      {
+        "//": "Blocking check for 3D models. Exit 2 is what makes it blocking: on PostToolUse it feeds stderr back to Claude as an error to address, where the gdlint hook above only injects advisory context. The write has already happened by then, so this forces the problem to be fixed rather than reverting it. Runs the same command as CI's gate step. Fires on .spec.yaml too, because writing a spec is when a misspelled key gets introduced and schemas/model-spec.schema.json is what catches it.",
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | tr -d '\\r' | { read -r f; case \"$f\" in *.gltf|*.glb|*.gltf.spec.yaml|*.glb.spec.yaml) out=$(python .github/scripts/validate-model-files.py \"$f\" 2>&1) || { printf '%s\\n' \"$out\" >&2; exit 2; };; esac; }",
+            "shell": "bash",
+            "timeout": 60,
+            "statusMessage": "Validating 3D model..."
+          }
         ]
       }
     ]

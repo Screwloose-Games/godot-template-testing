@@ -78,6 +78,8 @@ body:
         - [ ] The placeholder matches the dimensions on the issue.
         - [ ] The placeholder uses the asset's final filename.
         - [ ] No mesh has a child mesh.
+        - [ ] No object name ends in a Godot node-type suffix by accident.
+        - [ ] Collision proxies do not stick out past the visual mesh.
         - [ ] The pivot is at the world origin and in the correct spot on the model.
         - [ ] The model faces +Y in Blender.
         - [ ] Poly count is within budget.

@@ -9,6 +9,8 @@ on:
       - '**.spec.yaml'
       # Re-run (and re-test) the validator whenever its own code changes.
       - 'tools/gltf-validator/**'
+      - '.github/scripts/validate-model-files.py'
+      - '.github/scripts/test_validate_model_files.py'
       - '.github/workflows/validate-gltf-files.yml'
 
 # Add permissions block
@@ -29,58 +31,95 @@ jobs:
         with:
           python-version: '3.x'
 
-      # The axis and transform checks are pure node-graph maths, so they are
-      # tested outside the validator image: numpy and pyyaml only, no trimesh or
-      # pyrender. Runs before the image is pulled so a broken check fails fast
-      # and cheap.
-      - name: Test the axis and transform checks
+      # Every check here is node-graph maths and accessor metadata, so it is
+      # tested outside the validator image: numpy, pyyaml and jsonschema only, no
+      # trimesh or pyrender. Runs before the image is pulled so a broken check
+      # fails fast and cheap.
+      - name: Test the model checks
         run: |
-          pip install numpy pyyaml
+          pip install numpy pyyaml jsonschema
           python tools/gltf-validator/test_gltf_axes.py
           python tools/gltf-validator/test_gltf_transforms.py
+          python tools/gltf-validator/test_gltf_document.py
+          python tools/gltf-validator/test_gltf_measure.py
+          python tools/gltf-validator/test_gltf_godot_import.py
+          python tools/gltf-validator/test_model_spec.py
           python tools/gltf-validator/test_validate_gltf_spec.py
+          python .github/scripts/test_validate_model_files.py
+
+      # `safe_output: false` is load-bearing, not decoration. Without it this
+      # action backslash-escapes the JSON it writes, which still parses but
+      # yields paths that match nothing -- so the job goes green having checked
+      # zero files. That is how the audio validator broke twice; the model
+      # validator raises a named error rather than repeating it.
+      #
+      # .spec.yaml is included because editing only a spec already triggers this
+      # workflow (see on.paths above) and used to validate nothing.
+      - name: Find changed model files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          json: true
+          safe_output: false
+          write_output_files: true
+          separator: "\n"
+          files: |
+            **.gltf
+            **.glb
+            **.spec.yaml
+
+      - name: Verify the contents of the .github/outputs/all_changed_files.json file
+        run: |
+          cat .github/outputs/all_changed_files.json
+          echo "All changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
+
+      # THE GATE. Everything below this step is presentation: the container
+      # renders previews and writes a PR comment, but it decides nothing.
+      #
+      # This runs before Docker is even contacted, so a model that fails its spec
+      # fails in seconds rather than after an image pull and an X server boot --
+      # and the identical command runs from a laptop, a pre-commit hook and a
+      # Claude Code hook, so nobody is surprised by CI.
+      - name: Validate models against their specs
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
+        run: |
+          python .github/scripts/validate-model-files.py \
+            --changed-files-json .github/outputs/all_changed_files.json
 
       # GHCR rejects uppercase in image names but the owner slug is mixed case,
       # so lowercase it. Derived rather than hardcoded so forks pull the image
       # their own build-and-push-gltf-validator.yml produced.
       - name: Resolve validator image
         id: image
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/gltf-validator:latest" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Find changed GLTF files
-        id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          json: true
-          write_output_files: true
-          separator: "\n"
-          files: |
-            **.gltf
-            **.glb
-      - name: Verify the contents of the .github/outputs/all_changed_files.json file
-        run: |
-          cat .github/outputs/all_changed_files.json
-          echo "All changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
-
       - name: Create output directory
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         run: mkdir -p gltf-validation-results
 
       - name: Install Xvfb and dependencies
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
+      # Runs even when the gate above failed -- deliberately. An artist whose
+      # model is the wrong size needs to see the render *and* the reason; a
+      # failing check that also hides the picture makes the failure harder to fix.
       - name: GLTF validator
         id: gltf-validator
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_COMMIT_SHA: ${{ github.sha }}
@@ -90,12 +129,21 @@ jobs:
           if [ -s .github/outputs/all_changed_files.json ]; then
             echo "Processing files from JSON..."
 
-            # Parse JSON array into a Bash array
-            mapfile -t files < <(jq -r '.[]' .github/outputs/all_changed_files.json)
+            # Only models go to the renderer. The changed-files step above also
+            # picks up .spec.yaml, because a spec-only edit still needs checking
+            # -- but there is nothing to render for one, and validate_gltf.py
+            # would report it as an unreadable model.
+            mapfile -t files < <(jq -r '.[] | select(test("\\.(gltf|glb)$"; "i"))' \
+              .github/outputs/all_changed_files.json)
 
             for f in "${files[@]}"; do
               echo "  $f"
             done
+
+            if [ ${#files[@]} -eq 0 ]; then
+              echo "Only spec files changed; nothing to render."
+              exit 0
+            fi
 
             docker run --rm \
               -v "$(pwd):/workspace" \
@@ -111,7 +159,7 @@ jobs:
           fi
 
       - name: Upload validation results
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: gltf-validation-results
@@ -128,7 +176,7 @@ jobs:
       # writes a parentless commit straight to the object store, so the working
       # tree and the currently checked-out branch are never disturbed.
       - name: Ensure assets branch exists
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         env:
           GIT_AUTHOR_NAME: github-actions[bot]
           GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
@@ -145,22 +193,36 @@ jobs:
           fi
 
       - name: Checkout assets branch
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         uses: actions/checkout@v4
         with:
           ref: assets
           path: assets-branch
 
+      # `pip install requests` is load-bearing. process_markdown.py imports it, and
+      # this is the only workflow that calls that script -- the other validators
+      # comment via thollander/actions-comment-pull-request, so nothing else would
+      # notice it missing.
+      #
+      # It is needed here and not in tiny-pet (where the same script has always
+      # worked) because this job runs actions/setup-python, which puts a bare
+      # tool-cache interpreter ahead of the runner's system python3 on PATH. The
+      # system one ships requests; a tool-cache one ships pip, setuptools and wheel
+      # and nothing else. Without this line the step dies on ModuleNotFoundError and
+      # takes the whole PR comment with it -- the verdicts, the 3D preview links and
+      # all nine rendered views -- while every step before it stays green.
       - name: Run markdown processor
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
-        run: python .github/scripts/process_markdown.py "gltf-validation-results/github_comment.md"
+        run: |
+          pip install requests
+          python .github/scripts/process_markdown.py "gltf-validation-results/github_comment.md"
 
       - name: Commit and push new images to `assets` branch
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         run: |
           cd assets-branch
           git status
@@ -170,15 +232,12 @@ jobs:
           git commit -m "Add uploaded assets" || echo "No changes to commit"
           git push origin HEAD:assets
 
-      # Guarded on any_changed: without it, a workflow_dispatch run (or a PR that
-      # touches no models) reaches this step with an empty `success` output and
-      # exits 1, failing a run that had nothing to validate.
-      - name: Set workflow status
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          if [ "${{ steps.gltf-validator.outputs.success }}" == "true" ]; then
-            echo "GLTF validation completed successfully."
-          else
-            echo "GLTF validation failed. Please check the results."
-            exit 1
-          fi
+      # There used to be a "Set workflow status" step here that gated the job on
+      # validate_gltf.py's `success` output. That output means "the file loaded
+      # and rendered", not "the model met its spec" -- process_gltf_file returns
+      # success unconditionally once it has produced images -- so a model that
+      # FAILed every check in its spec still turned the job green.
+      #
+      # The gate is now the "Validate models against their specs" step near the
+      # top of this job, which exits non-zero on a real verdict and does it
+      # before any image is pulled. Nothing below it needs to fail the build.

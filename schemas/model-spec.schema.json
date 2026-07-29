@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Screwloose-Games/godot-jam-template/schemas/model-spec.schema.json",
   "title": "glTF Model Spec",
-  "description": "Per-model acceptance spec, saved next to a glTF as `<model>.gltf.spec.yaml`. Read by tools/gltf-validator/validate_gltf.py, which reports OK/FAIL per key in the PR comment posted by .github/workflows/validate-gltf-files.yml.\n\nEvery key is optional: a key that is absent is simply not checked. A model with no spec file at all passes silently, so adding a spec is how a model gains acceptance criteria.\n\nThis schema is transcribed from evaluate_model_against_spec() in tools/gltf-validator/validate_gltf.py. If that function changes, change this file with it.",
+  "description": "Per-model acceptance spec, saved next to a glTF as `<model>.gltf.spec.yaml`. Read by tools/gltf-validator/model_spec.py, which reports OK/FAIL per key both in the PR comment posted by .github/workflows/validate-gltf-files.yml and in the local checker, .github/scripts/validate-model-files.py.\n\nThis file is ENFORCED, not merely documentary: validate-model-files.py validates every spec against it, and because additionalProperties is false a misspelled key is a hard error. That is a deliberate change -- an unrecognised key used to be ignored in silence, so a spec saying `poly_budget` instead of `poly_count_budget` produced a green tick and no poly budget was ever checked.\n\nEvery key is optional: a key that is absent is simply not checked. A model with no spec file at all passes silently, so adding a spec is how a model gains acceptance criteria.\n\nTo read a model's real measurements before writing a spec, run:\n  python .github/scripts/validate-model-files.py path/to/sm_thing.gltf\n\nThis schema is transcribed from evaluate_model_against_spec() in tools/gltf-validator/model_spec.py. If that function changes, change this file with it.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -23,13 +23,27 @@
     },
     "up_direction": {
       "type": "string",
-      "enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"],
+      "enum": [
+        "+X",
+        "-X",
+        "+Y",
+        "-Y",
+        "+Z",
+        "-Z"
+      ],
       "default": "+Y",
       "description": "Which axis points up, in glTF space. Normally '+Y': it is the glTF convention, what Godot expects, and what Blender's +Z up converts to on export. Measured from the node graph, so a Z-up export fails here. (Before gltf_axes.py this check compared the spec string against the literal '+Y' and never looked at the model, so every asset passed.)"
     },
     "facing_direction": {
       "type": "string",
-      "enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"],
+      "enum": [
+        "+X",
+        "-X",
+        "+Y",
+        "-Y",
+        "+Z",
+        "-Z"
+      ],
       "default": "-Z",
       "description": "Which axis the model faces, in glTF space. This project's convention is '-Z': artists point the model down +Y in Blender, and a correct glTF export converts that to -Z. Do not put the Blender axis here -- the spec describes the exported file. Measured against a real export, not assumed: see assets/3d/example_cubes_facing. '-Z' is Godot's forward (Vector3.FORWARD), which is deliberately not the glTF spec's own +Z-front convention -- matching the engine that loads these files matters more here than matching viewers.\n\nThis field is a declaration for reviewers, not something CI verifies. Nothing in a glTF marks which side of a mesh is the face, so no tool can read the facing off the geometry: two exports of the same model built facing opposite ways both report the same axis once their transforms are applied. What tools/gltf-validator/gltf_axes.py measures is the rotation on the node chain, which catches an export that skipped or botched the axis conversion and nothing more. Confirm the real facing from the render in the PR comment."
     },
@@ -67,9 +81,14 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
           "expected": {
             "type": "boolean",
             "default": true,
@@ -78,15 +97,37 @@
         }
       }
     },
+    "rests_on_ground": {
+      "type": "boolean",
+      "description": "Assert that the model's lowest point sits on Y=0 (glTF up), within 1cm. Opt-in, because plenty of assets legitimately do not touch the floor -- a wall bracket, a ceiling lamp, a pickup that hovers. Set true for anything placed by dropping it into a level: a vehicle or prop authored a few centimetres off the origin sinks into or floats above every surface it is ever placed on, and nothing else in this validator would notice. Collision geometry counts towards the measurement, because what an object rests on is its collision, not its art. Measured by tools/gltf-validator/gltf_godot_import.py."
+    },
+    "allow_oversized_collision": {
+      "type": "boolean",
+      "default": false,
+      "description": "Opt out of the check that collision proxies stay inside the visual mesh. Off by default because an oversized proxy is not a cosmetic problem: the size checks measure the whole file, so a proxy sticking out past the art BECOMES the model's declared width, height or depth, and the resulting failure points at a number that is invisible in every render. A centimetre of slack is allowed before it reports, since a proxy hugging a curved surface routinely pokes a few millimetres past the faceted mesh approximating it. Set true only when a deliberately larger collision volume is the intent. Measured by tools/gltf-validator/gltf_godot_import.py."
+    },
+    "godot_node_suffixes_allowed": {
+      "type": "array",
+      "description": "Godot node-type suffixes this model uses on purpose, beyond the collision and navmesh ones the pipeline already expects.\n\nGodot's scene importer reinterprets node names ending in certain words -- and it matches '_wheel' and '$wheel' as well as '-wheel'. That is the mechanism that makes -convcolonly work, so it cannot be switched off, and it means an ordinary descriptive name can silently change a node's class: a mesh named `steering_wheel` imports as a VehicleWheel3D, a physics node that only functions parented to a VehicleBody3D. The file is valid glTF throughout, so nothing else in this validator can see it.\n\nThe fix is normally to rename the node. List a suffix here only when the Godot node type really is what you want -- e.g. 'vehicle' or 'rigid'. Names: col, colonly, convcol, convcolonly, navmesh, vehicle, wheel, rigid, occ, occonly, noimp, cycle, loop.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
     "animations_expected": {
       "type": "array",
       "description": "Animations that must exist in the glTF. Matched by EXACT name, unlike textures_expected.",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
-          "name": { "type": "string", "minLength": 1 }
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }

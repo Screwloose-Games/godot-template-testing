@@ -1,0 +1,38 @@
+# Acceptance criteria for sm_example_cubes_facing.gltf.
+#
+# This is the reference example: the model exists to show which way "forward"
+# comes out of a Blender export, and this file exists to show what a spec looks
+# like when it is filled in from real measurements rather than guessed at.
+#
+# Every number here was read off the model itself:
+#     python .github/scripts/validate-model-files.py \
+#         assets/3d/example_cubes_facing/sm_example_cubes_facing.gltf
+# Run that after any re-export. It prints the measured width, height, depth and
+# triangle count, so a spec is never a guess.
+#
+# Every key is optional and an absent key is simply not checked -- but an
+# unrecognised one is an error, because a key the validator does not know is a
+# check that silently never runs. The valid keys are in
+# schemas/model-spec.schema.json.
+
+# Metres, checked within +/-10%. The model is two 1m cubes arranged to show
+# facing, so it is wider and deeper than it is tall.
+width: 2.0
+height: 2.045
+depth: 2.909
+
+# Two cubes, six quads each, two triangles a quad.
+poly_count_budget: 24
+
+# glTF-space axes, not Blender's. "+Y" up is the glTF convention and what Godot
+# expects; Blender's +Z up converts to it on export.
+up_direction: "+Y"
+
+# The direction the model should be facing in the exported glTF. "Forward".
+facing_direction: "-Z"
+
+# The file should include collision, nodes with -col/-colonly suffix
+collision_expected: false
+
+# The file should include a navigation mesh, nodes with -navmesh suffix
+navigation_expected: false

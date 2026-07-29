@@ -33,7 +33,7 @@ never set the variable resolves to an empty string, producing the image tag
 |---|---|---|---|
 | `validate-aseprite-files.yml` | PR touching `**.aseprite`, `**.ase`, `**.png`; manual | Filename convention, canvas/image ≤ 1024px, unique lowercase tag names, `.import` sidecar present, `game/` path layout | Yes |
 | `validate-audio-files.yml` | PR touching `**.wav`, `**.ogg`, `**.mp3`; manual | 44.1kHz / 16-bit / mono WAV, ≤ 10s, ≤ 49MB, filename convention | Yes |
-| `validate-gltf-files.yml` | PR touching `**.gltf`, `**.glb`; manual | Model checked against a sibling `<model>.spec.yaml` — bounds, poly budget, facing/up axis, expected textures and animations. Renders ortho previews. | Yes |
+| `validate-gltf-files.yml` | PR touching `**.gltf`, `**.glb`, `**.spec.yaml`; manual | Referenced files exist on disk, filename convention under `assets/3d/`, spec validates against its schema, no leftover node transforms, and the model checked against a sibling `<model>.gltf.spec.yaml` — bounds, poly budget, up axis, expected textures and animations. Also renders ortho previews. | Yes |
 | `flag-fbx-files.yml` | PR touching `**.fbx`; manual | Rejects FBX outright, comments with per-DCC glTF export links | Yes |
 | `flag-mp3-files.yml` | PR touching `**.mp3`; manual | Rejects MP3 — its padding breaks seamless loops | Yes |
 | `check-import-files.yml` | PR touching any of 22 asset extensions | Every asset has a current Godot `.import` sidecar. Same-repo PRs get the sidecars committed back automatically; fork PRs get them as an artifact and fail. | Yes |
@@ -41,9 +41,40 @@ never set the variable resolves to an empty string, producing the image tag
 `check-import-files.yml` has no `workflow_dispatch` on purpose — it reads `github.event.pull_request`
 to find the head branch, so a manual run has nothing to check out.
 
-The `<model>.spec.yaml` format that `validate-gltf-files.yml` reads is documented in
-[`schemas/model-spec.schema.json`](../../schemas/model-spec.schema.json). A model with no
-spec file passes silently, so adding a spec is how a model gains acceptance criteria.
+**The checks run locally, and the gate is not the container.** Everything a model is judged
+on is computed from the glTF JSON by `.github/scripts/validate-model-files.py` — no Docker,
+no rendering, about a second per model:
+
+```bash
+python .github/scripts/validate-model-files.py --all                 # every model in the repo
+python .github/scripts/validate-model-files.py path/to/sm_thing.gltf # one model
+```
+
+The same command is the CI gate, a `pre-commit` hook, and a blocking Claude Code
+`PostToolUse` hook, so a failure never arrives as a surprise from CI. The container still
+renders the nine ortho previews for the PR comment, but it no longer decides anything —
+and it deliberately still runs when the gate fails, so an artist sees the picture *and* the
+reason. There used to be a gate here that read `validate_gltf.py`'s `success` output; that
+flag means "the file loaded and rendered", so a model that FAILed every key in its spec
+turned the job green.
+
+The `<model>.gltf.spec.yaml` format is documented in
+[`schemas/model-spec.schema.json`](../../schemas/model-spec.schema.json), and that schema is
+now **enforced** rather than merely documentary. Because it sets `additionalProperties:
+false`, a misspelled key is a hard error — a spec saying `poly_budget` instead of
+`poly_count_budget` used to be ignored in silence while the budget it asked for went
+unchecked. A model with no spec file still passes silently, so adding a spec is how a model
+gains acceptance criteria; run the command above on a model with no spec to read its real
+width, height, depth and triangle count off the output and write them down.
+
+**Bounds and triangle counts come from the accessor metadata**, not from decoded geometry.
+glTF 2.0 requires `min`/`max` on every POSITION accessor, so
+`tools/gltf-validator/gltf_measure.py` transforms each primitive's declared AABB by its
+node's world matrix and unions the results. That is an AABB of transformed AABBs, so a
+*rotated* node yields a superset of the exact bounds — but `unapplied_transforms` already
+fails any model carrying a rotation, so on everything that passes the other checks the two
+are identical rather than merely close. Triangles are counted **per instance**: a crate
+referenced by twenty nodes is twenty crates' worth of budget.
 
 `facing_direction` and `up_direction` are measured from the glTF node graph by
 `tools/gltf-validator/gltf_axes.py`, which catches an export that skipped or botched the
@@ -120,11 +151,33 @@ they are off. Turn them on once the art and the convention agree — otherwise e
 Aseprite itself is not installable in CI — it ships as a paid binary or a source build — so the
 parser reads the documented format directly. Neither script needs `pip install`.
 
+`validate-model-files.py` is the deliberate exception: the axis and bounds maths needs `numpy`,
+specs are YAML, and the schema check needs `jsonschema`. The `pre-commit` hook installs all three
+into its own isolated venv, so contributors still need nothing on their PATH. Its *module scope*
+is stdlib-only, though — `validate-pipeline-doc.py` imports the file to compare its constants
+against `pipeline.yaml`, and that workflow does not install numpy, so the heavy imports live
+inside `main()`.
+
+**Hooks.** `pre-commit install` (once per clone) makes the model check and `gdlint`/`gdformat`
+run on staged files. `.claude/settings.json` adds a blocking `PostToolUse` hook so Claude Code
+gets the same feedback the moment it writes a `.gltf`, `.glb` or `.spec.yaml`. Neither is a
+substitute for CI — a hook can be skipped with `--no-verify` and a fresh clone has none
+installed, so no rule lives only in a hook.
+
 ### Running the checks locally
 
 ```bash
 python .github/scripts/test_validate_audio_files.py
 python .github/scripts/test_validate_aseprite_files.py
+python .github/scripts/test_validate_model_files.py
+
+# The model checks (numpy + pyyaml + jsonschema, no Docker)
+python tools/gltf-validator/test_gltf_axes.py
+python tools/gltf-validator/test_gltf_transforms.py
+python tools/gltf-validator/test_gltf_document.py
+python tools/gltf-validator/test_gltf_measure.py
+python tools/gltf-validator/test_model_spec.py
+python tools/gltf-validator/test_validate_gltf_spec.py
 
 # Validate specific files
 python .github/scripts/validate-aseprite-files.py game/spider/spider.aseprite

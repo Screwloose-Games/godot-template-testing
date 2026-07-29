@@ -63,6 +63,15 @@ tools:
   - id: os_explorer
     name: Operating system file explorer
     notes: Used to confirm sidecar files that Godot's own FileSystem dock hides.
+  - id: blender_vehicle_kit
+    name: Procedural vehicle toolkit
+    notes: >-
+      tools/blender-vehicle/ - builds a vehicle in Blender from a Python
+      description: geometry, UVs, a baked 2048 atlas, collision proxies and a
+      validated glTF, in two calls. Only models/<name>.py is bespoke. Its README
+      is the retrospective from assets/3d/vehicles/jeep_turret, including the
+      traps that cost a rebuild to find. Run build.blockout() and get the
+      silhouette approved before build.produce(), which spends ~90 seconds baking.
 
 images:
   - id: art_substance_painter_output_template
@@ -188,6 +197,48 @@ code_mirrors:
     symbol: ENFORCE_ONE_SHOT_REPEAT
     value: false
     note: Deliberately off. See the sprite_2d pipeline's open questions.
+  - id: model_filename_pattern
+    path: .github/scripts/validate-model-files.py
+    symbol: MODEL_FILENAME_PATTERN
+    value: "^sm_[a-z0-9]+(_[a-z0-9]+)*\\.gltf$"
+  - id: skeletal_model_filename_pattern
+    path: .github/scripts/validate-model-files.py
+    symbol: SKELETAL_FILENAME_PATTERN
+    value: "^sk_[a-z0-9]+(_[a-z0-9]+)*\\.gltf$"
+  - id: model_path_root
+    path: .github/scripts/validate-model-files.py
+    symbol: MODEL_ROOT
+    value: assets/3d
+    note: >-
+      3D assets live under assets/3d/. 2D art lives under game/ - the two roots
+      are deliberately different, not a mistake to reconcile. Model filenames are
+      only enforced under this root, so examples/ can hold prototypes and
+      third-party art that ignore the convention on purpose.
+  - id: model_spec_schema_enforced
+    path: .github/scripts/validate-model-files.py
+    symbol: ENFORCE_SPEC_SCHEMA
+    value: true
+    note: >-
+      Checks each spec against schemas/model-spec.schema.json, whose
+      additionalProperties: false turns a misspelled key into an error. Before
+      this, such a key was ignored and the check it enabled silently never ran.
+  - id: model_godot_import_enforced
+    path: .github/scripts/validate-model-files.py
+    symbol: ENFORCE_GODOT_IMPORT
+    value: true
+    note: >-
+      Checks that a model is still correct after Godot has imported it: node names
+      the importer silently reinterprets as node types, and collision proxies
+      larger than the art they stand in for. Both describe files that are valid
+      glTF and wrong in the engine, so no other check here can see them. Each cost
+      a round trip through the Godot editor to find by hand before this existed.
+  - id: model_spec_required
+    path: .github/scripts/validate-model-files.py
+    symbol: ENFORCE_SPEC_REQUIRED
+    value: false
+    note: >-
+      Deliberately off - a model with no spec passes, as spec_file.required says.
+      Turn it on once specs are the norm.
   - id: wav_specifications
     path: .github/scripts/validate-audio-files.py
     symbol: WAV_FILE_SPECIFICATIONS
@@ -297,7 +348,12 @@ pipelines:
               - sm_rain-barrel.gltf
               - sm_rain_barrel.glb
           enforced_by:
-            - kind: review
+            - kind: script
+              path: .github/scripts/validate-model-files.py
+              note: >-
+                Enforced under assets/3d/ only. examples/ holds self-contained
+                prototypes and third-party art that deliberately do not follow
+                the shared conventions.
           deprecated_aliases:
             - pattern: "{object}.gltf"
               note: Unprefixed names predate the sm_/sk_ split. Rename on next touch.
@@ -318,7 +374,9 @@ pipelines:
               - sk_Wolf.gltf
               - wolf_sk.gltf
           enforced_by:
-            - kind: review
+            - kind: script
+              path: .github/scripts/validate-model-files.py
+              note: Enforced under assets/3d/ only, as for static meshes.
         - id: gltf_binary_buffer
           pattern: "{mesh_stem}.bin"
           regex: "^s[mk]_[a-z0-9]+(_[a-z0-9]+)*\\.bin$"
@@ -513,8 +571,17 @@ pipelines:
             path: .github/workflows/validate-gltf-files.yml
             blocking: true
           - kind: script
+            path: .github/scripts/validate-model-files.py
+            blocking: true
+            note: >-
+              Decides pass or fail. Runs identically from a git pre-commit hook,
+              a Claude Code hook, and the CI gate, so a model can be checked
+              before it is ever committed. Needs no Docker.
+          - kind: script
             path: tools/gltf-validator/validate_gltf.py
-            note: Renders front/top/right ortho previews into the PR comment.
+            note: >-
+              Renders front/top/right ortho previews into the PR comment.
+              Presentation only - it no longer decides anything.
       - id: gltf_binary_buffer
         title: glTF binary buffer
         extensions: [.bin]
@@ -553,6 +620,15 @@ pipelines:
           - kind: workflow
             path: .github/workflows/validate-gltf-files.yml
             blocking: true
+          - kind: script
+            path: .github/scripts/validate-model-files.py
+            blocking: true
+            note: >-
+              Checks the spec against schemas/model-spec.schema.json. The schema
+              sets additionalProperties: false, so a misspelled key is now an
+              error rather than being ignored in silence while the check it was
+              meant to enable never runs. Also fails a spec with no model beside
+              it, which catches the sm_rain_barrel.spec.yaml near-miss below.
       - id: model_container_scene
         title: Model container scene
         description: >-
@@ -661,6 +737,12 @@ pipelines:
             tool: blender
             summary: Build the real geometry.
             instructions:
+              - >-
+                If the asset is a vehicle, build it with tools/blender-vehicle/
+                rather than by hand - it produces the geometry, UVs, a baked
+                atlas, collision proxies and a validated glTF from one Python
+                file, and its README records the traps that cost a rebuild to
+                find. Get the blockout approved before the bake.
               - Model to the dimensions on the issue, in metres.
               - Set the pivot to the right place - usually bottom centre - and align it to the world origin.
               - UV unwrap, creating islands as needed.
@@ -672,6 +754,46 @@ pipelines:
                 why: It breaks Godot's collision shape generation.
                 severity: blocking
                 checklist: No mesh has a child mesh.
+              - id: godot_node_type_suffixes
+                statement: >-
+                  Do not end an object name in a word Godot's importer reads as a
+                  node type - wheel, vehicle, rigid, occ, noimp, cycle or loop -
+                  unless that node type is what you want.
+                why: >-
+                  Godot's scene importer reinterprets node names, and it matches
+                  "_wheel" and "$wheel" as well as "-wheel". That is the same
+                  mechanism that makes -convcolonly work, so it cannot be switched
+                  off, and it means an ordinary descriptive name can silently
+                  change a node's class: a mesh named steering_wheel arrives as a
+                  VehicleWheel3D, a physics node that only functions parented to a
+                  VehicleBody3D. The file is valid glTF throughout, so nothing but
+                  this check can see it. Rename the object - steering_wheel_rim -
+                  or, if the Godot node type really is the intent, list the suffix
+                  in the spec's godot_node_suffixes_allowed.
+                severity: blocking
+                checklist: No object name ends in a Godot node-type suffix by accident.
+                enforced_by:
+                  - kind: workflow
+                    path: .github/workflows/validate-gltf-files.yml
+                    blocking: true
+                    note: godot_node_suffixes, from tools/gltf-validator/gltf_godot_import.py.
+              - id: collision_inside_visual
+                statement: >-
+                  Keep collision proxies inside the visual mesh they stand in for.
+                why: >-
+                  The size checks measure the whole file, so a proxy sticking out
+                  past the art becomes the model's declared width, height or
+                  depth - and the resulting failure points at a number that is
+                  invisible in every render. A centimetre of slack is allowed,
+                  because a proxy hugging a curved surface routinely pokes a few
+                  millimetres past the faceted mesh approximating it.
+                severity: blocking
+                checklist: Collision proxies do not stick out past the visual mesh.
+                enforced_by:
+                  - kind: workflow
+                    path: .github/workflows/validate-gltf-files.yml
+                    blocking: true
+                    note: collision_within_visual, from tools/gltf-validator/gltf_godot_import.py.
               - id: pivot_at_origin
                 statement: Align the pivot point to the world origin.
                 why: >-
@@ -708,8 +830,14 @@ pipelines:
             outputs:
               - artifact_kind: blend_source
             agent:
-              automatable: none
-              note: Needs Blender.
+              automatable: partial
+              note: >-
+                Needs Blender, but not necessarily a human driving it. A vehicle
+                can be built end to end by tools/blender-vehicle/ through the
+                Blender MCP add-on - geometry, UVs, atlas, collision and a
+                validated glTF - with only models/<name>.py written by hand. See
+                that directory's README. Proportions and part layout are still
+                judgement, which is what the blockout checkpoint is for.
 
           - id: art.texture
             title: Texture the asset
@@ -1088,6 +1216,12 @@ pipelines:
               - Set up_direction to "+Y" and facing_direction to "-Z" - these are glTF-space axes, not Blender's.
               - Declare collision_expected and navigation_expected.
               - List the textures the model must reference.
+              - >-
+                Check it before you commit: python .github/scripts/validate-model-files.py
+                path/to/sm_thing.gltf. It prints the model's measured width, height,
+                depth and triangle count, so you can read the real numbers off a
+                model with no spec and write them down rather than guessing. It
+                also rejects a misspelled key, which CI used to ignore in silence.
             rules:
               - id: spec_beside_model
                 statement: Name the spec after the model's full filename, including .gltf.

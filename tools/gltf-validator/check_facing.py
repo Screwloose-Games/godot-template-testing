@@ -16,85 +16,18 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
-import struct
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import gltf_axes  # noqa: E402
 import gltf_transforms  # noqa: E402
+# The loader used to live here. It moved to gltf_document so the local CLI, the
+# Docker validator and this scanner all read a model exactly the same way.
+from gltf_document import as_gltf, load_document as read_document  # noqa: E402,F401
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-
-GLB_MAGIC = 0x46546C67  # "glTF"
-CHUNK_JSON = 0x4E4F534A  # "JSON"
-
-
-def read_glb_json(path: Path) -> dict:
-    """Pull the JSON chunk out of a binary glTF container."""
-    data = path.read_bytes()
-    if len(data) < 12:
-        raise ValueError("file is too short to be a GLB")
-    magic, version, _length = struct.unpack_from("<III", data, 0)
-    if magic != GLB_MAGIC:
-        raise ValueError("not a GLB (bad magic)")
-    if version != 2:
-        raise ValueError(f"unsupported GLB version {version}")
-
-    offset = 12
-    while offset + 8 <= len(data):
-        chunk_length, chunk_type = struct.unpack_from("<II", data, offset)
-        offset += 8
-        if chunk_type == CHUNK_JSON:
-            return json.loads(data[offset : offset + chunk_length].decode("utf-8"))
-        offset += chunk_length
-    raise ValueError("no JSON chunk found in GLB")
-
-
-def read_document(path: Path) -> dict:
-    if path.suffix.lower() == ".glb":
-        return read_glb_json(path)
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def as_gltf(document: dict):
-    """Give the JSON the attribute shape gltf_axes and gltf_transforms expect."""
-    return SimpleNamespace(
-        scene=document.get("scene", 0),
-        scenes=[SimpleNamespace(nodes=scene.get("nodes")) for scene in document.get("scenes", [])],
-        nodes=[
-            SimpleNamespace(
-                name=node.get("name"),
-                mesh=node.get("mesh"),
-                children=node.get("children"),
-                rotation=node.get("rotation"),
-                translation=node.get("translation"),
-                scale=node.get("scale"),
-                matrix=node.get("matrix"),
-            )
-            for node in document.get("nodes", [])
-        ],
-        # Joints and animated nodes are allowed to carry transforms; the
-        # transform check needs these to know which nodes to leave alone.
-        skins=[
-            SimpleNamespace(joints=skin.get("joints"), skeleton=skin.get("skeleton"))
-            for skin in document.get("skins", [])
-        ],
-        animations=[
-            SimpleNamespace(
-                channels=[
-                    SimpleNamespace(
-                        target=SimpleNamespace(node=channel.get("target", {}).get("node"))
-                    )
-                    for channel in animation.get("channels", [])
-                ]
-            )
-            for animation in document.get("animations", [])
-        ],
-    )
 
 
 def display_path(path: Path, scan_root: Path) -> str:

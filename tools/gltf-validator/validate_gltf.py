@@ -4,7 +4,6 @@ import re
 import sys
 from urllib.parse import unquote, quote
 import numpy as np
-from pygltflib import GLTF2
 import trimesh
 import pyrender
 import sys
@@ -17,6 +16,35 @@ from gltf_axes import get_model_facing_direction, get_model_up_direction
 from gltf_transforms import find_unapplied_transforms, format_report
 import logging
 
+# This script renders. It no longer judges.
+#
+# The spec checks used to live here, which meant the only way to find out whether
+# a model passed was to push a branch and wait for this container to boot an X
+# server. They now live in model_spec, which needs neither, so the same verdicts
+# are available from a laptop, a git hook and a CI step that runs in seconds --
+# see .github/scripts/validate-model-files.py.
+#
+# pygltflib is gone with them. Nothing here needed its decoded buffers: trimesh
+# loads from the path, the preview URL reads only uri strings, and the one
+# function that did decode buffers (get_bounding_box) was dead code. Reading the
+# document through gltf_document instead means the checks see byte-identical
+# input in Docker and on a laptop as a matter of structure rather than intent.
+import gltf_document
+import gltf_measure
+import model_spec
+from model_spec import (  # noqa: F401 -- re-exported; callers and tests import these from here
+    SPEC_EXTENSION,
+    evaluate_model_against_spec,
+    get_gltf_scale,
+    list_animations,
+    list_bones,
+    list_images,
+    list_materials,
+    list_textures,
+    read_spec_file,
+    verdicts_failed,
+)
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -27,7 +55,6 @@ THIN_GRID_COLOR = (200, 200, 200, 255)
 THICK_GRID_THICKNESS = 2
 THIN_GRID_THICKNESS = 1
 CAMERA_DISTANCE_PADDING = 1.0
-SPEC_EXTENSION = ".spec.yaml"
 image_width, image_height = 256, 256
 
 def get_raw_url(repo, branch, filepath):
@@ -36,7 +63,7 @@ def get_raw_url(repo, branch, filepath):
     print(f"get_raw_url: repo={repo}, branch={branch}, filepath={filepath}")
     return f"https://github.com/{repo}/blob/{branch}/{filepath}?raw=true"
 
-def create_3d_preview_url(gltf_filepth: str, gltf: GLTF2) -> str:
+def create_3d_preview_url(gltf_filepth: str, gltf) -> str:
     """
     Create a 3D preview URL for the assets.
     """
@@ -61,31 +88,6 @@ def create_3d_preview_url(gltf_filepth: str, gltf: GLTF2) -> str:
     complete_url = f"https://3dviewer.net/#model={comma_separated_assets}"
     print(f"3D preview URL: {complete_url}")
     return complete_url
-
-def get_bounding_box(mesh, accessors, buffer_views, buffers):
-    min_coords = np.array([np.inf, np.inf, np.inf])
-    max_coords = np.array([-np.inf, -np.inf, -np.inf])
-    for prim in mesh.primitives:
-        pos_accessor_idx = getattr(prim.attributes, 'POSITION', None)
-        if pos_accessor_idx is None:
-            continue
-        accessor = accessors[pos_accessor_idx]
-        bv = buffer_views[accessor.bufferView]
-        buffer = buffers[bv.buffer]
-        data = buffer.data
-        offset = bv.byteOffset + accessor.byteOffset
-        count = accessor.count
-        dtype = np.float32
-        arr = np.frombuffer(data, dtype=dtype, count=count*3, offset=offset)
-        arr = arr.reshape((count, 3))
-        min_coords = np.minimum(min_coords, arr.min(axis=0))
-        max_coords = np.maximum(max_coords, arr.max(axis=0))
-    return min_coords, max_coords
-
-def has_animations(gltf_path: str):
-    gltf = GLTF2().load(gltf_path)
-    return bool(gltf.animations)
-
 
 def load_gltf_with_trimesh(filepath: str) -> trimesh.Scene:
     # Trimesh can load glTF directly
@@ -222,288 +224,6 @@ def generate_grid_image(height: int = 1024, width: int = 1024, largest_dist:  fl
             draw.line([(0, y), (width, y)], fill=(200, 200, 200, 255), width=THIN_GRID_THICKNESS)
     return grid_img
 
-def list_animations(gltf: GLTF2) -> list[str]:
-    """
-    Lists all animations in the scene.
-    """
-    animations = []
-    if not gltf.animations:
-        print("No animations found.")
-        return animations
-    for animation in gltf.animations:
-        animations.append(animation.name)
-    return animations
-
-def list_textures(gltf: GLTF2) -> list[str]:
-    """
-    Lists all textures in the scene.
-    """
-    textures = []
-    if not gltf.textures:
-        print("No textures found.")
-        return textures
-    for texture in gltf.textures:
-        texture_strs = []
-        if hasattr(texture, 'source') and texture.source is not None:
-            image_str = list_images(gltf)[texture.source]
-            texture_strs.append(f"Image: {image_str}")
-        if hasattr(texture, 'name') and texture.name:
-            texture_strs.append(f"Name: {texture.name}")
-        textures.append("| ".join(texture_strs))
-    return textures
-
-def list_images(gltf: GLTF2) -> list[str]:
-    """
-    Lists all images in the scene.
-    """
-    images = []
-    if not gltf.images:
-        print("No images found.")
-        return images
-    for image in gltf.images:
-        if hasattr(image, 'uri') and image.uri:
-            decoded_uri = unquote(image.uri)
-            images.append(decoded_uri)
-        elif hasattr(image, 'name') and image.name:
-            images.append(image.name)
-        elif hasattr(image, 'bufferView') and image.bufferView:
-            images.append(f"BufferView id: {image.bufferView}")
-        else:
-            images.append("Unknown image")
-    return images
-
-def list_bones(gltf: GLTF2) -> list[str]:
-    """
-    Lists all bones in the scene.
-    """
-    bones = []
-    if not gltf.skins:
-        print("No bones found.")
-        return bones
-    for skin in gltf.skins:
-        # bones.append(skin.name)
-        for joint_node_id in skin.joints:
-            bones.append(gltf.nodes[joint_node_id].name)
-    return bones
-
-def list_materials(gltf: GLTF2) -> list[str]:
-    """
-    Lists all materials in the scene.
-    """
-    materials = []
-    if not gltf.materials:
-        print("No materials found.")
-        return materials
-    for material in gltf.materials:
-        materials.append(material.name)
-    return materials
-
-def get_gltf_scale(gltf: GLTF2) -> float:
-    """
-    Returns the scale of the glTF model.
-    """
-    if not gltf.scenes:
-        print("No scenes found.")
-        return 1.0
-    scene = gltf.scenes[gltf.scene]
-    if not scene.nodes:
-        print("No nodes found in the scene.")
-        return 1.0
-    node = gltf.nodes[scene.nodes[0]]
-    if not node.scale:
-        print("No scale found in the node.")
-        return 1.0
-    return node.scale[0]  # Assuming uniform scaling
-
-def get_poly_count(scene: trimesh.Scene) -> int:
-    """
-    Returns the total number of polygons in the scene.
-    """
-    total_polygons = 0
-    for mesh in scene.geometry.values():
-        if isinstance(mesh, trimesh.Trimesh):
-            total_polygons += mesh.faces.shape[0]
-    return total_polygons
-
-def read_spec_file(spec_file: str) -> dict:
-    """
-    Read the yaml spec file and return a dictionary with the contents.
-    """
-    if not os.path.exists(spec_file):
-        print(f"Spec file '{spec_file}' not found.")
-        return {}
-    with open(spec_file, "r") as f:
-        spec = yaml.safe_load(f)
-    return spec
-
-def evaluate_model_against_spec(
-    gltf: GLTF2,
-    spec: dict,
-    scene_bounds_size: np.ndarray,
-    poly_count: int,
-) -> dict:
-    """
-    Evaluates the model against the provided spec dictionary.
-    Returns a dictionary with results for each spec item.
-    """
-    print("Evaluating model against spec: ", spec)
-    results = {}
-
-    # Size checks
-    width, height, depth = scene_bounds_size[0], scene_bounds_size[1], scene_bounds_size[2]
-    results["width"] = abs(width - spec.get("width", width)) / spec.get("width", width) <= 0.10
-    results["height"] = abs(height - spec.get("height", height)) / spec.get("height", height) <= 0.10
-    results["depth"] = abs(depth - spec.get("depth", depth)) / spec.get("depth", depth) <= 0.10
-
-    # Unapplied transforms. Reported as its own result rather than folded into
-    # the axis checks: a leftover rotation and a botched axis conversion are the
-    # same observable (a rotation on a node), so this check adds a diagnosis
-    # alongside the axis verdicts instead of overriding them. See gltf_transforms.
-    #
-    # A spec that deliberately describes a rotated node -- see the axis checks
-    # below, which compare against the spec rather than hard-coding +Y/+Z -- can
-    # opt out instead of being blocked by a transform it asked for.
-    transforms = find_unapplied_transforms(gltf)
-    if transforms.findings:
-        print("Unapplied transform check:")
-        print(format_report(transforms))
-    if spec.get("allow_unapplied_transforms", False):
-        pass
-    elif transforms.ok:
-        results["unapplied_transforms"] = True
-    else:
-        summary = "; ".join(f"{f.kind} on {f.label}" for f in transforms.failures)
-        results["unapplied_transforms"] = (
-            f"FAIL - {summary}. Apply it in the modelling program "
-            "(Blender: Ctrl+A > Rotation / Scale) and export again, or set "
-            "allow_unapplied_transforms in the spec if the node transform is intended."
-        )
-
-    # Up direction. Measured from the node graph rather than assumed -- the
-    # previous version of this check compared the spec string against the
-    # literal "+Y" and never looked at the model at all, so it passed for every
-    # asset ever committed.
-    up_dir = spec.get("up_direction", None)
-    if up_dir:
-        up_dir = up_dir.strip().upper()
-        model_up = get_model_up_direction(gltf)
-        if model_up is None:
-            results["up_direction"] = "UNKNOWN (could not determine from the node graph)"
-            print("Could not determine the model's up direction.")
-        else:
-            results["up_direction"] = (model_up == up_dir)
-            if model_up != up_dir:
-                print(f"Up direction is {model_up}, spec expects {up_dir}.")
-
-    # Facing direction is declared, not checked, and is reported as INFO so the
-    # PR comment never claims to have verified it.
-    #
-    # Nothing in a glTF marks which side of a mesh is the face, so facing cannot
-    # be read off the geometry. What get_model_facing_direction returns is where
-    # the node chain sends the glTF +Z basis vector, which is "+Z" for every
-    # clean export whichever way the model was built -- two exports of the same
-    # asset facing opposite ways both report "+Z". This project's convention is
-    # that geometry faces -Z (Godot's forward, from Blender +Y), so comparing
-    # the spec's "-Z" against that measurement would fail every correctly
-    # authored model. That trap is exactly what the pipeline's open question
-    # worried about; the answer is that the comparison was never meaningful.
-    #
-    # The node frame is still reported: a deviation from "+Z" means a leftover
-    # rotation, which unapplied_transforms above fails on for real.
-    facing_dir = spec.get("facing_direction", None)
-    if facing_dir:
-        facing_dir = facing_dir.strip().upper()
-        model_facing = get_model_facing_direction(gltf)
-        results["facing_direction"] = (
-            f"INFO - spec declares {facing_dir}. Not machine-checkable; confirm it from the "
-            f"rendered views below. (Node frame reads {model_facing or 'undetermined'}; "
-            "a clean export reads +Z here regardless of which way the model faces.)"
-        )
-        print(f"Facing direction declared {facing_dir}; node frame reads {model_facing}.")
-
-    # Poly count
-    poly_budget = spec.get("poly_count_budget", None)
-    if poly_budget is not None:
-        results["poly_count_budget"] = poly_count <= poly_budget
-
-    # Root node name
-    root_node_name = spec.get("root_node_name", None)
-    if root_node_name:
-        found = False
-        for node in gltf.nodes or []:
-            if getattr(node, "name", None) == root_node_name:
-                found = True
-                break
-        results["root_node_name"] = found
-
-    # Collision expected
-    if "collision_expected" in spec:
-        found = False
-        for node in gltf.nodes or []:
-            name = getattr(node, "name", "").lower()
-
-            has_collision = name.endswith("-colonly") or name.endswith("-col")\
-                  or name.endswith("-convcol") or name.endswith("-convcolonly")
-
-            if has_collision:
-                found = True
-                break
-        results["collision_expected"] = found == bool(spec["collision_expected"])
-
-    # Navigation expected
-    if "navigation_expected" in spec:
-        found = False
-        for node in gltf.nodes or []:
-            if getattr(node, "name", "").lower().endswith("-navmesh"):
-                found = True
-                break
-        results["navigation_expected"] = found == bool(spec["navigation_expected"])
-
-    # Minimum material count
-    min_material_count = spec.get("min_material_count", None)
-    if min_material_count is not None:
-        mat_count = len(gltf.materials) if gltf.materials else 0
-        results["min_material_count"] = mat_count >= min_material_count
-
-    # Textures expected
-    if "textures_expected" in spec:
-        image_uris = set(list_images(gltf))
-        textures_ok = True
-        for tex in spec["textures_expected"]:
-            expected = tex.get("expected", True)
-            name = tex.get("name", "")
-            found = any(name in uri for uri in image_uris)
-            if expected and not found:
-                textures_ok = False
-                print(f"Texture '{name}' not found in the model.")
-        results["textures_expected"] = textures_ok
-        if not textures_ok:
-            print("Textures found in the model:", image_uris)
-
-    # Animations expected
-    if "animations_expected" in spec:
-        anim_names = set(list_animations(gltf))
-        anims_ok = True
-        for anim in spec["animations_expected"]:
-            name = anim.get("name", "")
-            if name and name not in anim_names:
-                anims_ok = False
-                print(f"Animation '{name}' not found in the model.")
-        results["animations_expected"] = anims_ok
-        if not anims_ok:
-            print("Animations found in the model:", anim_names)
-    
-    for key, value in results.items():
-        if value == False:
-            results[key] = "FAIL"
-        elif value == True:
-            results[key] = "OK"
-        elif isinstance(value, str):
-            results[key] = value
-        else:
-            results[key] = "FAIL"
-
-    return results
 
 def render_and_save_view(scene, camera, camera_pose, grid_img, output_path, render_flags=RenderFlags.RGBA, model_facing_direction: str = None) -> str:
     """
@@ -601,42 +321,32 @@ def process_gltf_file(gltf_file: str, output_dir: str) -> dict:
         
 
 
+        # Read the document once, through the same loader the local CLI and the
+        # git hooks use, so a verdict computed here and a verdict computed on a
+        # laptop are computed from identical input.
+        document = gltf_document.load_document(gltf_file)
+        gltf = gltf_document.as_gltf(document)
+
         # Check for missing resources
-        gltf: GLTF2 = GLTF2().load(gltf_file)
-        base_dir = os.path.dirname(gltf_file)
-        missing_resources = []
-
-        # Check images
-        if gltf.images:
-            for image in gltf.images:
-                if hasattr(image, 'uri') and image.uri:
-                    decoded_uri = unquote(image.uri)
-                    image_path = os.path.join(base_dir, decoded_uri)
-                    if not os.path.exists(image_path):
-                        missing_resources.append(f"Image: {image.uri}")
-
-        buffer_paths = []
-        # Check buffers
-        if gltf.buffers:
-            for buffer in gltf.buffers:
-                if hasattr(buffer, 'uri') and buffer.uri:
-                    buffer_path = os.path.join(base_dir, buffer.uri)
-                    if not os.path.exists(buffer_path):
-                        missing_resources.append(f"Buffer: {buffer.uri}")
-                    else:
-                        buffer_paths.append(buffer_path)
-        
-        # if gltf, confirm it has a .bin with the same name
-        if gltf_file.lower().endswith('.gltf'):
-            expected_bin_file_path = os.path.splitext(gltf_file)[0] + ".bin"
-            # if there is a buffer in bufffer paths, check if it matches the expected bin file path
-            if not any(os.path.basename(buffer_path) == os.path.basename(expected_bin_file_path) for buffer_path in buffer_paths):
-                # Expected that the buffer file had the fame file name as the gltf file
-                print(f"Expected buffer file not found: {expected_bin_file_path}")
-                print(f"Buffer paths found: {buffer_paths}")
-                # missing_resources.append(f"Expected buffer file: {expected_bin_file_path}, rename {gltf_file.lower()} to {os.path.basename(buffer_paths[0]).replace('.bin', '.gltf')}")
-                logger.warning(f"Expected buffer file: {expected_bin_file_path}, rename {gltf_file.lower()} to {os.path.basename(buffer_paths[0]).replace('.bin', '.gltf')}")
         print(f"Checking for missing resources in {gltf_file}")
+        missing_resources = model_spec.check_external_resources(gltf, gltf_file)
+
+        # A .gltf is expected to sit beside a .bin of the same name. Reported,
+        # never failed: the export is still loadable, and renaming the pair is a
+        # judgement call about which of the two names is the right one.
+        if gltf_file.lower().endswith('.gltf'):
+            expected_bin = os.path.splitext(os.path.basename(gltf_file))[0] + ".bin"
+            buffer_names = [
+                os.path.basename(unquote(buffer.uri))
+                for buffer in gltf.buffers or []
+                if getattr(buffer, "uri", None)
+            ]
+            if buffer_names and expected_bin not in buffer_names:
+                logger.warning(
+                    f"Expected buffer file {expected_bin} beside {gltf_file}; "
+                    f"found {buffer_names} instead."
+                )
+
         if missing_resources:
             print(f"Missing resources:\n" + "\n".join(f"- {r}" for r in missing_resources))
             return {
@@ -655,10 +365,24 @@ def process_gltf_file(gltf_file: str, output_dir: str) -> dict:
                 "success": False
             }
 
-        scene_bounds_size: np.ndarray[np.float64] = scene.bounds[1] - scene.bounds[0]
+        # The spec verdicts are measured from the glTF JSON, not from trimesh, so
+        # that the numbers in this comment are the same numbers a contributor
+        # sees locally. trimesh's own bounds still frame the camera below --
+        # that is cosmetic, and only ever needs to be approximately right.
+        measurement = gltf_measure.measure(document)
+        scene_bounds_size = measurement.size
+        poly_count = measurement.triangles
+        for problem in measurement.problems:
+            logger.warning(problem)
         print(f"Scene bounds size: {scene_bounds_size}")
+        print(
+            f"Triangles: {poly_count} across {measurement.instances} instance(s) "
+            f"of {measurement.unique_meshes} mesh(es)"
+        )
+
+        camera_bounds_size = scene.bounds[1] - scene.bounds[0]
         SCENE_BOUNDS_PADDING_PERCENTAGE = 0.1
-        padded_scene_bounds_size = scene_bounds_size * (1 + SCENE_BOUNDS_PADDING_PERCENTAGE)  # add some padding to the bounds in all directions
+        padded_scene_bounds_size = camera_bounds_size * (1 + SCENE_BOUNDS_PADDING_PERCENTAGE)  # add some padding to the bounds in all directions
 
         largest_dim = max(padded_scene_bounds_size)
         camera = pyrender.OrthographicCamera(xmag=largest_dim / 2, ymag=largest_dim / 2)
@@ -666,16 +390,29 @@ def process_gltf_file(gltf_file: str, output_dir: str) -> dict:
         wireframe_render_flags = RenderFlags.RGBA + RenderFlags.ALL_WIREFRAME
 
         logger.debug(f"Loading spec file for {gltf_file}")
-        spec = read_spec_file(gltf_file + SPEC_EXTENSION)
-        
-        poly_count = get_poly_count(scene)
+        spec_file = model_spec.spec_path_for(gltf_file)
+        spec = read_spec_file(spec_file)
+
+        # A spec key with a typo in it used to be ignored in silence, so the
+        # check the artist asked for simply never ran. Surface it here too, not
+        # only in the local CLI, so the PR comment says what went unchecked.
+        spec_problems = model_spec.validate_spec_schema(spec, spec_file)
+        for problem in spec_problems:
+            logger.warning(problem)
+
         logger.debug(f"Evaluating model against spec for {gltf_file}")
+        report = model_spec.transform_report(gltf)
+        if report:
+            print("Unapplied transform check:")
+            print(report)
         validation_results = evaluate_model_against_spec(
             gltf=gltf,
             spec=spec,
             scene_bounds_size=scene_bounds_size,
             poly_count=poly_count
         )
+        if spec_problems:
+            validation_results["spec_schema"] = "FAIL - " + "; ".join(spec_problems)
 
         # Create output directory for this file
         file_output_dir = os.path.join(output_dir, os.path.splitext(os.path.basename(gltf_file))[0])
@@ -703,11 +440,15 @@ def process_gltf_file(gltf_file: str, output_dir: str) -> dict:
         
         # Create markdown report
         print(f"Creating markdown report for {gltf_file}")
+        # A model whose POSITION accessors declare no min/max cannot be measured;
+        # fall back to trimesh's numbers for the report rather than crashing, and
+        # let the spec verdicts say UNKNOWN.
+        reported_size = scene_bounds_size if scene_bounds_size is not None else camera_bounds_size
         report = create_markdown_report(
-            poly_count=get_poly_count(scene),
-            width=scene_bounds_size[0],
-            depth=scene_bounds_size[2],
-            height=scene_bounds_size[1],
+            poly_count=poly_count,
+            width=reported_size[0],
+            depth=reported_size[2],
+            height=reported_size[1],
             animations=list_animations(gltf),
             textures=list_textures(gltf),
             images=list_images(gltf),

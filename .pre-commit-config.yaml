@@ -31,3 +31,36 @@ repos:
       - id: gdformat
         args: ["--check"]
         exclude: '^addons/'
+
+  - repo: local
+    hooks:
+      # The same command CI runs -- see the gate step in
+      # .github/workflows/validate-gltf-files.yml -- so a model that would fail
+      # the build fails the commit instead, before anyone waits on a container.
+      #
+      # `language: python` rather than `system`: this needs numpy, pyyaml and
+      # jsonschema, and the contributors committing models are artists who should
+      # not have to curate a Python environment. pre-commit builds an isolated
+      # venv, exactly as it does for gdtoolkit above.
+      #
+      # The versions are pinned to what tools/gltf-validator/Dockerfile installs,
+      # so a local verdict and a CI verdict are computed by the same arithmetic.
+      # numpy is held below 2.0 there because pyrender needs the 1.x C API.
+      - id: validate-models
+        name: validate 3D models
+        entry: python .github/scripts/validate-model-files.py
+        language: python
+        additional_dependencies:
+          - "numpy==1.26.4"
+          - "pyyaml==6.0.2"
+          - "jsonschema==4.23.0"
+        pass_filenames: true
+        # Anchored to the model extension so an unrelated `*.spec.yaml` elsewhere
+        # in the repo is not mistaken for a model spec.
+        files: '\.(gltf|glb)$|\.(gltf|glb)\.spec\.yaml$'
+        # test-fixtures holds a model that exists in order to fail
+        # (unapplied_rotation_90z.gltf); without this exclusion
+        # `pre-commit run --all-files` could never pass. examples/ holds
+        # self-contained prototypes and third-party art that does not follow the
+        # naming convention on purpose.
+        exclude: '^(addons/|\.godot/|examples/|tools/gltf-validator/test-fixtures/)'
