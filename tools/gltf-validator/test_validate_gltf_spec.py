@@ -6,10 +6,16 @@ that a measured axis is compared against the spec, that the OK/FAIL coercion at
 the end of evaluate_model_against_spec turns the result into what the PR comment
 renders, and that an unmeasurable model is reported rather than passed.
 
-validate_gltf.py imports trimesh, pyrender and pygltflib at module scope, none of
-which are installable outside the validator's Docker image. Those three are
-stubbed here -- evaluate_model_against_spec never calls into them, it only reads
-the node graph, so the stubs are never exercised.
+validate_gltf.py imports trimesh, pyrender and PIL at module scope, none of which
+are installable outside the validator's Docker image. They are stubbed here --
+evaluate_model_against_spec never calls into them, it only reads the node graph,
+so the stubs are never exercised.
+
+Keep this list in step with validate_gltf.py's imports. It is not cosmetic: CI
+runs this file with numpy, pyyaml and jsonschema only, so a heavy import that is
+not stubbed fails the job outright. PIL was missing for exactly that reason and
+only showed up in CI, because a developer machine that has ever installed pillow
+imports the real thing and passes.
 
 Runs standalone or under pytest. Needs only numpy and pyyaml.
 """
@@ -54,6 +60,23 @@ def _stub_heavy_imports() -> None:
         pyrender.constants = constants
         sys.modules["pyrender"] = pyrender
         sys.modules["pyrender.constants"] = constants
+
+    if "PIL" not in sys.modules:
+        # Both validate_gltf and spec_image_tools do `from PIL import Image,
+        # ImageDraw`, and neither uses `from __future__ import annotations`, so
+        # signatures like `-> Image` and `draw: ImageDraw.ImageDraw` are
+        # evaluated at def time and both names must resolve. The same
+        # __getattr__ trick as pyrender avoids restating pillow's API.
+        pil = types.ModuleType("PIL")
+        image = types.ModuleType("PIL.Image")
+        image.__getattr__ = lambda name: type(name, (), {})
+        image_draw = types.ModuleType("PIL.ImageDraw")
+        image_draw.__getattr__ = lambda name: type(name, (), {})
+        pil.Image = image
+        pil.ImageDraw = image_draw
+        sys.modules["PIL"] = pil
+        sys.modules["PIL.Image"] = image
+        sys.modules["PIL.ImageDraw"] = image_draw
 
 
 _stub_heavy_imports()
