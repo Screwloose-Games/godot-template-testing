@@ -45,19 +45,35 @@ SPEC_EXTENSION = ".spec.yaml"
 SCHEMA_RELATIVE_PATH = Path("schemas") / "model-spec.schema.json"
 
 
-def _find_schema() -> Path:
-    """Locate model-spec.schema.json from either side of the Docker boundary.
+def _schema_candidates(module_path: Path, cwd: Path) -> list[Path]:
+    """Where model-spec.schema.json might be, on either side of the Docker boundary.
 
     In a checkout this module sits two directories below the repo root. In the
     validator image it is copied to /app while the repo is mounted at the working
     directory, so walking up from __file__ finds nothing. Try both rather than
     assuming a layout: getting this wrong means the schema check silently
     reports "schema not found" instead of catching a typo'd spec key.
+
+    The ancestor candidate is built only when that ancestor exists. /app has no
+    third parent, and indexing .parents past the filesystem root raises
+    IndexError rather than returning something that simply fails .exists() --
+    which took the whole renderer down at import time, before it could fall back
+    to the working directory that would have worked.
+
+    Split out from _find_schema so the flattened-image layout is testable without
+    a container: this is the one code path that differs between the two, and it
+    had no test precisely because every test runs from a checkout.
     """
-    candidates = [
-        Path(__file__).resolve().parents[2] / SCHEMA_RELATIVE_PATH,
-        Path.cwd() / SCHEMA_RELATIVE_PATH,
-    ]
+    candidates = []
+    parents = module_path.resolve().parents
+    if len(parents) > 2:
+        candidates.append(parents[2] / SCHEMA_RELATIVE_PATH)
+    candidates.append(cwd / SCHEMA_RELATIVE_PATH)
+    return candidates
+
+
+def _find_schema() -> Path:
+    candidates = _schema_candidates(Path(__file__), Path.cwd())
     for candidate in candidates:
         if candidate.exists():
             return candidate

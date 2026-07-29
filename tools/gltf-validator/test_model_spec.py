@@ -68,6 +68,46 @@ def test_a_path_that_is_not_a_spec_is_returned_unchanged():
 
 
 # --------------------------------------------------------------------------
+# Finding the schema on either side of the Docker boundary
+# --------------------------------------------------------------------------
+
+
+def test_the_schema_is_looked_for_above_a_checkout():
+    """From tools/gltf-validator/, the repo root is two directories up.
+
+    Compared against the resolved module path rather than a literal "/repo":
+    on Windows a rooted path resolves onto the current drive (C:\\repo\\...), so
+    asserting against the bare string passes on Linux and fails everywhere else.
+    """
+    module = Path("/repo/tools/gltf-validator/model_spec.py")
+    candidates = model_spec._schema_candidates(module, Path("/somewhere/else"))
+    assert len(candidates) == 2, "checkout candidate then working directory"
+    assert candidates[0] == module.resolve().parents[2] / model_spec.SCHEMA_RELATIVE_PATH
+    assert candidates[0].parent.name == "schemas"
+
+
+def test_a_flattened_image_layout_falls_back_to_the_working_directory():
+    """The regression that took the renderer down.
+
+    The validator image copies this module to /app, which has no third parent.
+    Indexing .parents past the root raises IndexError rather than yielding a path
+    that merely fails .exists(), so building the candidate list blew up at import
+    time -- before the working-directory fallback, where the repo is mounted and
+    the schema really is, could be tried.
+    """
+    candidates = model_spec._schema_candidates(
+        Path("/app/model_spec.py"), Path("/workspace")
+    )
+    assert candidates == [Path("/workspace") / model_spec.SCHEMA_RELATIVE_PATH]
+
+
+def test_the_working_directory_is_always_a_candidate():
+    for module_path in (Path("/app/model_spec.py"), Path("/r/tools/v/model_spec.py")):
+        candidates = model_spec._schema_candidates(module_path, Path("/workspace"))
+        assert Path("/workspace") / model_spec.SCHEMA_RELATIVE_PATH in candidates
+
+
+# --------------------------------------------------------------------------
 # Reading
 # --------------------------------------------------------------------------
 
