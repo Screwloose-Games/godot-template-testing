@@ -1,0 +1,15 @@
+# Baseline: this model is correct in every respect and every check should read OK
+# (facing_direction is INFO by design -- see schemas/model-spec.schema.json).
+#
+# Exactly 1m cubed and resting on the floor, so it doubles as the scale reference
+# for the rendered grid: one thick grid square per side.
+width: 1.0
+height: 1.0
+depth: 1.0
+poly_count_budget: 12
+up_direction: "+Y"
+facing_direction: "-Z"
+collision_expected: false
+navigation_expected: false
+min_material_count: 1
+rests_on_ground: true

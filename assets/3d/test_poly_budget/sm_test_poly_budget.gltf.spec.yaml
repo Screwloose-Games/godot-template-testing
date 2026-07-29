@@ -1,0 +1,11 @@
+# DELIBERATELY WRONG: 2028 triangles against a budget of 100. Every other key
+# describes the model accurately, so this should be the only failure.
+#
+# Expected: FAIL poly_count_budget.
+width: 1.0
+height: 1.0
+depth: 1.0
+poly_count_budget: 100
+up_direction: "+Y"
+facing_direction: "-Z"
+rests_on_ground: true
