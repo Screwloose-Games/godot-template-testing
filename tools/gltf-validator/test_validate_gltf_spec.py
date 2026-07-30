@@ -214,6 +214,81 @@ def test_opposite_facing_conventions_are_indistinguishable():
 
 
 # --------------------------------------------------------------------------
+# The facing arrow, which is the whole of the facing check
+#
+# Since facing_direction can never fail, the arrow drawn on the rendered views is
+# the only thing that tells an artist which way their model points. It used to
+# point +Z on both annotated views -- the model's back -- so it agreed with a
+# model built backwards and disagreed with a correct one.
+
+
+def test_the_facing_arrow_points_at_this_projects_forward():
+    """-Z is forward, and these are the screen directions -Z maps to.
+
+    Derived from the camera poses: the top view puts -Z at screen up, the right
+    view puts it at screen left. Both used to be drawn towards +Z.
+    """
+    import spec_image_tools
+
+    assert spec_image_tools.FORWARD_ON_SCREEN["top"] == "up"
+    assert spec_image_tools.FORWARD_ON_SCREEN["right"] == "left"
+
+
+def test_the_arrow_runs_from_the_centre_to_the_correct_edge():
+    import spec_image_tools
+
+    start, end = spec_image_tools.arrow_endpoints("up", 256, 256)
+    assert start == (128, 128)
+    assert end == (128, 0), "up must mean towards row 0, not the bottom"
+
+    start, end = spec_image_tools.arrow_endpoints("left", 256, 256)
+    assert end == (0, 128), "left must mean towards column 0"
+
+
+def test_only_the_annotated_views_get_an_arrow():
+    """The front view looks straight down the forward axis.
+
+    An in-plane arrow there would point somewhere forward is not.
+    """
+    import spec_image_tools
+
+    assert spec_image_tools.FORWARD_ON_SCREEN.get("front") is None
+
+
+# --------------------------------------------------------------------------
+# The ground line
+#
+# The cameras frame each model on its own bounds, so a model authored a metre off
+# the origin looks exactly like one resting on the floor. Marking world Y=0 is
+# what makes a rests_on_ground failure visible in the render it tells you to check.
+
+
+def test_a_grounded_model_puts_the_floor_at_the_bottom_of_the_frame():
+    # A 1m model resting on Y=0 has its centre at Y=0.5 and is framed 1m tall, so
+    # the floor lands on the bottom edge -- clamped to the last real row, because
+    # a line at `image_height` would fall outside the image and draw nothing.
+    assert validate_gltf.ground_line_row(0.5, 1.0, 256) == 255
+
+    # With the camera's 10% padding, which is what actually happens, it sits just
+    # inside the frame instead.
+    assert validate_gltf.ground_line_row(0.5, 1.1, 256) == 244
+
+
+def test_a_floating_model_puts_the_floor_below_the_frame():
+    """sm_test_wrong_size: a 1m cube authored 0.5m up. Y=0 is off-frame."""
+    assert validate_gltf.ground_line_row(1.0, 1.0, 256) is None
+
+
+def test_a_model_straddling_the_origin_puts_the_floor_mid_frame():
+    assert validate_gltf.ground_line_row(0.0, 2.0, 256) == 128
+
+
+def test_degenerate_bounds_do_not_raise():
+    assert validate_gltf.ground_line_row(0.0, 0.0, 256) is None
+    assert validate_gltf.ground_line_row(0.5, 1.0, 0) is None
+
+
+# --------------------------------------------------------------------------
 # Unapplied transforms
 #
 # This check and the axis checks read the same node rotation. It is reported

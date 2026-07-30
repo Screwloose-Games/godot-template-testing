@@ -238,9 +238,53 @@ def generate_grid_image(height: int = 1024, width: int = 1024, largest_dist:  fl
     return grid_img
 
 
-def render_and_save_view(scene, camera, camera_pose, grid_img, output_path, render_flags=RenderFlags.RGBA, model_facing_direction: str = None) -> str:
+GROUND_LINE_COLOR = (0, 140, 0, 255)
+GROUND_LINE_THICKNESS = 2
+
+
+def ground_line_row(centre_y: float, world_height: float, image_height: int):
+    """Which pixel row world Y=0 falls on, or None when it is off-frame.
+
+    The cameras centre on the model's own bounds, so a model authored a metre off
+    the origin is framed exactly like one sitting on the floor. Without this the
+    grid conveys scale and nothing about position -- and rests_on_ground's failure
+    text ("dropped into a level this model floats over every surface") describes
+    something no render showed.
+    """
+    if world_height <= 0 or image_height <= 0:
+        return None
+    top_y = centre_y + world_height / 2.0
+    fraction = (top_y - 0.0) / world_height
+    if not 0.0 <= fraction <= 1.0:
+        return None
+    # Clamped to a real row: a model resting exactly on the floor puts Y=0 on the
+    # bottom edge, and a line drawn at `image_height` lands outside the image and
+    # silently draws nothing -- the one case where the mark matters most.
+    row = int(round(fraction * image_height))
+    return max(0, min(image_height - 1, row))
+
+
+def with_ground_line(grid_img, centre_y: float, world_height: float):
+    """A copy of the grid with world Y=0 marked, for views where up is +Y."""
+    marked = grid_img.copy()
+    row = ground_line_row(centre_y, world_height, marked.height)
+    if row is None:
+        return marked
+    draw = ImageDraw.Draw(marked)
+    draw.line([(0, row), (marked.width, row)], fill=GROUND_LINE_COLOR,
+              width=GROUND_LINE_THICKNESS)
+    draw.text((4, max(0, row - marked.height // 16)), "Y=0",
+              fill=GROUND_LINE_COLOR, font_size=marked.width // 20)
+    return marked
+
+
+def render_and_save_view(scene, camera, camera_pose, grid_img, output_path, render_flags=RenderFlags.RGBA, facing_view: str = None) -> str:
     """
     Renders a view of the scene with the given camera pose, overlays the grid, and saves the image.
+
+    `facing_view` names the view ("top"/"right") rather than a screen direction --
+    which way forward points on screen is a property of the camera pose, so it is
+    decided in spec_image_tools next to the table that records it.
     """
     print(f"Generating image for {output_path}")
     model_img = generate_orthographic_image(scene, camera, camera_pose, render_flags)
@@ -248,8 +292,8 @@ def render_and_save_view(scene, camera, camera_pose, grid_img, output_path, rend
     final_img = Image.alpha_composite(grid_img, model_img)
     print(f"Overlaying grid on image for {output_path}")
     draw = ImageDraw.Draw(final_img)
-    if model_facing_direction:
-        draw_facing_direction(draw, model_facing_direction)
+    if facing_view:
+        draw_facing_direction(draw, facing_view)
     print(f"Saving image to {output_path}")
     final_img.convert("RGB").save(output_path)
     return output_path
@@ -435,16 +479,22 @@ def process_gltf_file(gltf_file: str, output_dir: str) -> dict:
         print(f"Rendering and saving views for {gltf_file}")
         print(f"Output directory: {file_output_dir}")
 
+        # Front and right look along a horizontal axis, so screen-up is +Y and the
+        # floor is a real line on screen -- mark it there. The top view looks down
+        # Y, where Y=0 is the whole image and a ground line would be meaningless.
+        centre_y = float((scene.bounds[0][1] + scene.bounds[1][1]) / 2.0)
+        ground_grid = with_ground_line(grid_img, centre_y, float(largest_dim))
+
         rendered_images = {
-            "front": render_and_save_view(scene, camera, get_front_camera_pose(scene), grid_img, create_png_filename(gltf_file, "front")),
-            "top": render_and_save_view(scene, camera, get_top_down_camera_pose(scene), grid_img, create_png_filename(gltf_file, "top"), model_facing_direction="down"),
-            "right": render_and_save_view(scene, camera, get_right_side_camera_pose(scene), grid_img, create_png_filename(gltf_file, "right"), model_facing_direction="right"),
-            "front_wireframe": render_and_save_view(scene, camera, get_front_camera_pose(scene), grid_img, create_png_filename(gltf_file, "front_wireframe"), render_flags=wireframe_render_flags),
+            "front": render_and_save_view(scene, camera, get_front_camera_pose(scene), ground_grid, create_png_filename(gltf_file, "front")),
+            "top": render_and_save_view(scene, camera, get_top_down_camera_pose(scene), grid_img, create_png_filename(gltf_file, "top"), facing_view="top"),
+            "right": render_and_save_view(scene, camera, get_right_side_camera_pose(scene), ground_grid, create_png_filename(gltf_file, "right"), facing_view="right"),
+            "front_wireframe": render_and_save_view(scene, camera, get_front_camera_pose(scene), ground_grid, create_png_filename(gltf_file, "front_wireframe"), render_flags=wireframe_render_flags),
             "top_wireframe": render_and_save_view(scene, camera, get_top_down_camera_pose(scene), grid_img, create_png_filename(gltf_file, "top_wireframe"), render_flags=wireframe_render_flags),
-            "right_wireframe": render_and_save_view(scene, camera, get_right_side_camera_pose(scene), grid_img, create_png_filename(gltf_file, "right_wireframe"), render_flags=wireframe_render_flags),
-            "front_normals": render_and_save_view(scene, camera, get_front_camera_pose(scene), grid_img, create_png_filename(gltf_file, "front_normals"), render_flags=RenderFlags.RGBA + RenderFlags.OFFSCREEN + RenderFlags.FACE_NORMALS),
+            "right_wireframe": render_and_save_view(scene, camera, get_right_side_camera_pose(scene), ground_grid, create_png_filename(gltf_file, "right_wireframe"), render_flags=wireframe_render_flags),
+            "front_normals": render_and_save_view(scene, camera, get_front_camera_pose(scene), ground_grid, create_png_filename(gltf_file, "front_normals"), render_flags=RenderFlags.RGBA + RenderFlags.OFFSCREEN + RenderFlags.FACE_NORMALS),
             "top_normals": render_and_save_view(scene, camera, get_top_down_camera_pose(scene), grid_img, create_png_filename(gltf_file, "top_normals"), render_flags=RenderFlags.RGBA + RenderFlags.OFFSCREEN + RenderFlags.FACE_NORMALS),
-            "right_normals": render_and_save_view(scene, camera, get_right_side_camera_pose(scene), grid_img, create_png_filename(gltf_file, "right_normals"), render_flags=RenderFlags.RGBA + RenderFlags.OFFSCREEN + RenderFlags.FACE_NORMALS),
+            "right_normals": render_and_save_view(scene, camera, get_right_side_camera_pose(scene), ground_grid, create_png_filename(gltf_file, "right_normals"), render_flags=RenderFlags.RGBA + RenderFlags.OFFSCREEN + RenderFlags.FACE_NORMALS),
         }
 
         # Create 3D preview URL
@@ -512,14 +562,28 @@ def create_github_comment(results: list[dict]) -> str:
 
     
     for result in results:
-        
+
         if not result["success"]:
             comment += f"## ❌ {os.path.basename(result['file'])}\n"
             comment += f"Error: {result['error']}\n\n"
             continue
 
-        comment += f"## ✅ {os.path.basename(result['file'])}\n"
-        
+        # The marker reflects the verdicts, not merely "did this file render".
+        # It used to be ✅ for anything that produced images, so a model failing
+        # its spec was headed with a green tick -- the same conflation that once
+        # let a failing model turn the whole job green, still live in the one
+        # surface an artist actually reads.
+        #
+        # Not every check can be shown here: filename_convention,
+        # godot_node_suffixes, collision_within_visual, rests_on_ground and
+        # orphan_spec run only in the gate, which is the authority. The note below
+        # says so rather than letting a tick imply more than it means.
+        failed = verdicts_failed(result["validation_results"])
+        marker = "❌" if failed else "✅"
+        comment += f"## {marker} {os.path.basename(result['file'])}\n"
+        if failed:
+            comment += f"Failed: {', '.join(failed)}\n\n"
+
         # Add validation results
         comment += "### Validation Results:\n"
         for key, value in result["validation_results"].items():
@@ -551,7 +615,16 @@ def create_github_comment(results: list[dict]) -> str:
         #         comment += f"![{view} view]({image_path})\n"
         
         comment += "\n---\n\n"
-    
+
+    if results:
+        comment += (
+            "_Markers above cover the checks this renderer can see. The "
+            "authoritative pass/fail is the **Validate models against their "
+            "specs** step, which also runs `filename_convention`, "
+            "`godot_node_suffixes`, `collision_within_visual`, `rests_on_ground` "
+            "and `orphan_spec` -- see its verdicts at the top of this comment._\n"
+        )
+
     return comment
 
 if __name__ == "__main__":
@@ -601,3 +674,24 @@ if __name__ == "__main__":
             print(f"comment<<EOF\n{comment}\nEOF", file=fh)
             print(f"results={json.dumps(results)}", file=fh)
             print(f"success={json.dumps(all_succeeded)}", file=fh)
+
+    # Rendering nothing at all is a validator failure, and this step used to
+    # report success either way -- process_gltf_file catches per-model errors, so
+    # "0 successful, 10 failed" exited 0 and went green. That is how a dead import
+    # (model_spec's schema lookup) and a wrong API call (trimesh.load_scene) each
+    # stayed invisible for a whole run.
+    #
+    # Individual failures stay non-fatal on purpose: a .gltf committed without its
+    # .bin genuinely cannot be rendered, and the gate already fails it. Zero
+    # successes out of one or more files is different in kind -- it means the
+    # renderer is broken, not the art.
+    #
+    # This runs last so the comment and the outputs above are written first: the
+    # steps that publish them are guarded with !cancelled(), so they still run.
+    if results and success_count == 0:
+        print(
+            f"ERROR: rendered 0 of {len(results)} models. That is a validator "
+            "failure rather than a model failure -- look above for an import "
+            "error, a missing dependency or an API that moved."
+        )
+        sys.exit(1)
