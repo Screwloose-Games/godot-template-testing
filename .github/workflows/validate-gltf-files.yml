@@ -83,8 +83,13 @@ jobs:
       - name: Validate models against their specs
         if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
         run: |
+          mkdir -p gltf-validation-results
+          # pipefail is load-bearing: without it this step reports tee's exit
+          # status, which is always 0, and the gate would stop gating.
+          set -o pipefail
           python .github/scripts/validate-model-files.py \
-            --changed-files-json .github/outputs/all_changed_files.json
+            --changed-files-json .github/outputs/all_changed_files.json \
+            | tee gltf-validation-results/gate.txt
 
       # GHCR rejects uppercase in image names but the repo slug is mixed case, so
       # lowercase it. Derived rather than hardcoded so every repo and fork pulls
@@ -204,6 +209,45 @@ jobs:
         with:
           ref: assets
           path: assets-branch
+
+      # The renderer's comment only covers the checks the container can see, and
+      # its per-model marker means "these verdicts passed" -- it cannot speak for
+      # filename_convention, godot_node_suffixes, collision_within_visual,
+      # rests_on_ground or orphan_spec, which run only in the gate. Put the gate's
+      # own output at the top so the comment leads with the thing that decides the
+      # check.
+      #
+      # This also makes the comment survive a broken renderer. github_comment.md is
+      # written by the container, so when the container died the next step hit
+      # FileNotFoundError and the PR got no comment at all -- losing the verdicts
+      # too, which had been computed successfully a dozen steps earlier.
+      - name: Assemble the PR comment
+        if: ${{ !cancelled() && steps.changed-files.outputs.any_changed == 'true' }}
+        run: |
+          mkdir -p gltf-validation-results
+          comment=gltf-validation-results/github_comment.md
+          assembled=gltf-validation-results/assembled.md
+          : > "$assembled"
+
+          if [ -s gltf-validation-results/gate.txt ]; then
+            {
+              printf '### Verdicts\n\n'
+              printf 'Authoritative — this is the step that passes or fails the check.\n\n'
+              printf '```\n'
+              cat gltf-validation-results/gate.txt
+              printf '```\n\n'
+            } >> "$assembled"
+          fi
+
+          if [ -s "$comment" ]; then
+            cat "$comment" >> "$assembled"
+          else
+            printf '_The renderer produced no output, so this run has no 3D preview links and no rendered views. See the workflow log._\n' >> "$assembled"
+          fi
+
+          mv "$assembled" "$comment"
+          echo "--- assembled comment ---"
+          cat "$comment"
 
       # `pip install requests` is load-bearing. process_markdown.py imports it, and
       # this is the only workflow that calls that script -- the other validators
