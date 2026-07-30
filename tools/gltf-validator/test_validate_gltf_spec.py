@@ -225,13 +225,18 @@ def test_opposite_facing_conventions_are_indistinguishable():
 def test_the_facing_arrow_points_at_this_projects_forward():
     """-Z is forward, and these are the screen directions -Z maps to.
 
-    Derived from the camera poses: the top view puts -Z at screen up, the right
-    view puts it at screen left. Both used to be drawn towards +Z.
+    Derived from the camera poses: the top view (camera above, looking down -Y)
+    puts -Z at screen up; the right view (camera at +X, looking towards -X) puts
+    it at screen right. Both arrows used to be drawn towards +Z instead.
+
+    The right entry changed when the right-side camera moved from -X to +X so the
+    view would show the side it is named after. If a camera pose in validate_gltf
+    moves again, this table moves with it or the arrow lies.
     """
     import spec_image_tools
 
     assert spec_image_tools.FORWARD_ON_SCREEN["top"] == "up"
-    assert spec_image_tools.FORWARD_ON_SCREEN["right"] == "left"
+    assert spec_image_tools.FORWARD_ON_SCREEN["right"] == "right"
 
 
 def test_the_arrow_runs_from_the_centre_to_the_correct_edge():

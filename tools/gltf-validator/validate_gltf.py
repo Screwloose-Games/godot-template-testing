@@ -110,23 +110,24 @@ def load_gltf_with_trimesh(filepath: str) -> trimesh.Scene:
 
 
 def get_front_camera_pose(scene: trimesh.Scene) -> np.ndarray:
-    """
-    Returns a camera pose for a top-down view of the scene.
-    The camera looks down the -Z axis from above the model.
+    """Camera on -Z looking towards +Z, so this view shows the model's FRONT.
+
+    It used to sit on +Z with an identity rotation. A pyrender camera looks along
+    its own -Z, so that rendered the +Z face -- the model's BACK, by this
+    project's convention that forward is -Z.
+
+    An untextured cube looks the same from either side, so the mislabel was
+    invisible until the fixtures grew a face. Then "front" was the one view with
+    no eyes in it.
     """
     bounds = scene.bounds
-    center = (bounds[0] + bounds[1]) / 2
-
-    center_x = center[0]
-    center_z = center[1]
-
-    ending_bound = bounds[1]
-
-    ending_bound_y = ending_bound[2]
-
-    translation = translation_matrix([center_x, center_z, ending_bound_y + CAMERA_DISTANCE_PADDING])
-
-    return translation
+    centre = (bounds[0] + bounds[1]) / 2
+    near_z = bounds[0][2] - CAMERA_DISTANCE_PADDING
+    # Turn to face +Z. Rotating about Y leaves screen-up as +Y, which the ground
+    # line depends on.
+    rotation = euler_matrix(0, np.pi, 0)
+    translation = translation_matrix([centre[0], centre[1], near_z])
+    return translation @ rotation
 
 def get_top_down_camera_pose(scene: trimesh.Scene) -> np.ndarray:
     """
@@ -146,24 +147,22 @@ def get_top_down_camera_pose(scene: trimesh.Scene) -> np.ndarray:
     return camera_pose
 
 def get_right_side_camera_pose(scene: trimesh.Scene) -> np.ndarray:
-    """
-    Returns a camera pose for a top-down view of the scene.
-    The camera looks down the -Z axis from above the model.
+    """Camera on +X looking towards -X, so this view shows the model's RIGHT side.
+
+    It used to sit on -X and render the left side under a "right" label -- the
+    same class of mistake as the front view, and equally invisible on a cube with
+    no markings.
+
+    Moving the camera to +X puts -Z (forward) on the screen's right, where it used
+    to be on the left. spec_image_tools.FORWARD_ON_SCREEN has to move with this;
+    the two are a pair.
     """
     bounds = scene.bounds
-    center = (bounds[0] + bounds[1]) / 2
-
-    center_z = center[1]
-    center_y = center[2]
-
-    ending_bound = bounds[1]
-    ending_bound_x = ending_bound[0]
-
-    rotation = euler_matrix(0, - np.pi / 2, 0)
-    translation = translation_matrix([-ending_bound_x - CAMERA_DISTANCE_PADDING, center_z, center_y])
-    camera_pose = translation @ rotation
-
-    return camera_pose
+    centre = (bounds[0] + bounds[1]) / 2
+    far_x = bounds[1][0] + CAMERA_DISTANCE_PADDING
+    rotation = euler_matrix(0, np.pi / 2, 0)
+    translation = translation_matrix([far_x, centre[1], centre[2]])
+    return translation @ rotation
 
 
 def generate_orthographic_image(scene: trimesh.Scene, camera: pyrender.OrthographicCamera, camera_pose = np.eye(4), render_flags = RenderFlags.RGBA, ) -> Image:

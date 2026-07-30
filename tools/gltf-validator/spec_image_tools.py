@@ -28,11 +28,14 @@ import numpy as np
 #
 #   top view    euler_matrix(-pi/2, 0, 0), camera above looking down -Y.
 #               Local +Y maps to world -Z, so screen up is -Z and screen down +Z.
-#   right view  euler_matrix(0, -pi/2, 0), camera at -X looking towards +X.
-#               Local +X maps to world +Z, so screen right is +Z and screen left -Z.
+#   right view  euler_matrix(0, +pi/2, 0), camera at +X looking towards -X.
+#               Local +X maps to world -Z, so screen right is -Z and screen left +Z.
 #
 # Change a camera pose in validate_gltf.py and this table has to change with it.
-FORWARD_ON_SCREEN = {"top": "up", "right": "left"}
+# That has already happened once: the right-side camera moved from -X to +X so the
+# view would show the side it is named after, which flipped forward from the left
+# of the screen to the right.
+FORWARD_ON_SCREEN = {"top": "up", "right": "right"}
 
 FACING_COLOR = "red"
 
