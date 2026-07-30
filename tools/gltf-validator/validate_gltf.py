@@ -264,17 +264,62 @@ def ground_line_row(centre_y: float, world_height: float, image_height: int):
     return max(0, min(image_height - 1, row))
 
 
+def ground_offscreen(centre_y: float, world_height: float):
+    """(side, metres) when Y=0 lies outside the frame, else None.
+
+    Needed because "no line" is too quiet a signal. A model floating a metre up is
+    framed exactly like a grounded one, so without saying which edge the floor is
+    beyond and by how much, the fix only marks the models that were already fine.
+    """
+    if world_height <= 0:
+        return None
+    bottom_y = centre_y - world_height / 2.0
+    top_y = centre_y + world_height / 2.0
+    if bottom_y > 0:
+        return ("below", bottom_y)
+    if top_y < 0:
+        return ("above", -top_y)
+    return None
+
+
+def _dashed_line(draw, row, width, colour, thickness, dash=8, gap=6):
+    x = 0
+    while x < width:
+        draw.line([(x, row), (min(x + dash, width), row)], fill=colour, width=thickness)
+        x += dash + gap
+
+
 def with_ground_line(grid_img, centre_y: float, world_height: float):
-    """A copy of the grid with world Y=0 marked, for views where up is +Y."""
+    """A copy of the grid with world Y=0 marked, for views where up is +Y.
+
+    Solid when the floor is in frame; dashed against the edge it lies beyond, with
+    the distance, when it is not.
+    """
     marked = grid_img.copy()
-    row = ground_line_row(centre_y, world_height, marked.height)
-    if row is None:
-        return marked
     draw = ImageDraw.Draw(marked)
-    draw.line([(0, row), (marked.width, row)], fill=GROUND_LINE_COLOR,
-              width=GROUND_LINE_THICKNESS)
-    draw.text((4, max(0, row - marked.height // 16)), "Y=0",
-              fill=GROUND_LINE_COLOR, font_size=marked.width // 20)
+    font_size = max(8, marked.width // 20)
+
+    def label(text, row, above):
+        y = row - font_size - 2 if above else row + 2
+        y = max(0, min(y, marked.height - font_size - 1))
+        draw.text((4, y), text, fill=GROUND_LINE_COLOR, font_size=font_size)
+
+    row = ground_line_row(centre_y, world_height, marked.height)
+    if row is not None:
+        draw.line([(0, row), (marked.width, row)], fill=GROUND_LINE_COLOR,
+                  width=GROUND_LINE_THICKNESS)
+        # Label above the line unless that would fall off the top.
+        label("Y=0", row, above=row > font_size + 2)
+        return marked
+
+    offscreen = ground_offscreen(centre_y, world_height)
+    if offscreen is None:
+        return marked
+    side, metres = offscreen
+    edge_row = (marked.height - 1 - GROUND_LINE_THICKNESS) if side == "below" \
+        else GROUND_LINE_THICKNESS
+    _dashed_line(draw, edge_row, marked.width, GROUND_LINE_COLOR, GROUND_LINE_THICKNESS)
+    label(f"Y=0 is {metres:.2f}m {side}", edge_row, above=(side == "below"))
     return marked
 
 

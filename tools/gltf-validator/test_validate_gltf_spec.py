@@ -279,6 +279,33 @@ def test_a_floating_model_puts_the_floor_below_the_frame():
     assert validate_gltf.ground_line_row(1.0, 1.0, 256) is None
 
 
+def test_an_offscreen_floor_reports_which_edge_and_how_far():
+    """The half of this that nearly got missed.
+
+    Marking only the in-frame case annotates exactly the models that were already
+    fine and leaves a floating one looking identical to a grounded one, told apart
+    only by a line that is not there. sm_test_wrong_size, framed 1.1m tall around
+    a centre of Y=1.0, has its floor 0.45m below the bottom edge.
+    """
+    # Compared with a tolerance, not for equality: 1.0 - 1.1/2 is
+    # 0.45000000000000007, because 1.1 has no exact binary representation.
+    side, metres = validate_gltf.ground_offscreen(1.0, 1.1)
+    assert side == "below"
+    assert abs(metres - 0.45) < 1e-9
+
+
+def test_a_sunken_model_reports_the_floor_above():
+    side, metres = validate_gltf.ground_offscreen(-2.0, 1.0)
+    assert side == "above"
+    assert abs(metres - 1.5) < 1e-9
+
+
+def test_a_floor_in_frame_is_not_reported_as_offscreen():
+    assert validate_gltf.ground_offscreen(0.5, 1.1) is None
+    assert validate_gltf.ground_offscreen(0.0, 2.0) is None
+    assert validate_gltf.ground_offscreen(0.0, 0.0) is None
+
+
 def test_a_model_straddling_the_origin_puts_the_floor_mid_frame():
     assert validate_gltf.ground_line_row(0.0, 2.0, 256) == 128
 
