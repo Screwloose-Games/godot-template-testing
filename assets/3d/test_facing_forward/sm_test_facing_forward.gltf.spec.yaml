@@ -6,6 +6,9 @@
 # facing. This one's nose points -Z, which is this project's
 # forward (Godot's Vector3.FORWARD), so the red "Facing Direction" arrow in the
 # top and right views should AGREE with the nose.
+#
+# Deliberately untextured, unlike the cubes: these say which way they point by
+# silhouette alone, so they stay a clean control for the facing arrow.
 width: 0.8
 height: 0.6
 depth: 1.0

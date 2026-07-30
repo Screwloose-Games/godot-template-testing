@@ -25,9 +25,10 @@
         {
           "attributes": {
             "POSITION": 0,
-            "NORMAL": 1
+            "NORMAL": 1,
+            "TEXCOORD_0": 2
           },
-          "indices": 2,
+          "indices": 3,
           "material": 0
         }
       ]
@@ -35,16 +36,13 @@
   ],
   "materials": [
     {
-      "name": "crate",
+      "name": "smiley",
       "pbrMetallicRoughness": {
-        "baseColorFactor": [
-          0.55,
-          0.38,
-          0.24,
-          1.0
-        ],
+        "baseColorTexture": {
+          "index": 0
+        },
         "metallicFactor": 0.0,
-        "roughnessFactor": 0.7
+        "roughnessFactor": 0.8
       }
     }
   ],
@@ -73,6 +71,12 @@
     },
     {
       "bufferView": 2,
+      "componentType": 5126,
+      "count": 24,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
       "componentType": 5123,
       "count": 36,
       "type": "SCALAR",
@@ -100,6 +104,12 @@
     {
       "buffer": 0,
       "byteOffset": 576,
+      "byteLength": 192,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 768,
       "byteLength": 72,
       "target": 34963
     }
@@ -107,7 +117,26 @@
   "buffers": [
     {
       "uri": "sm_test_spec_typo.bin",
-      "byteLength": 648
+      "byteLength": 840
+    }
+  ],
+  "images": [
+    {
+      "uri": "t_smiley_basecolor.png"
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 33071,
+      "wrapT": 33071
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
     }
   ]
 }

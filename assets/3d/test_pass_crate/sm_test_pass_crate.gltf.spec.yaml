@@ -3,6 +3,10 @@
 #
 # Exactly 1m cubed and resting on the floor, so it doubles as the scale reference
 # for the rendered grid: one thick grid square per side.
+#
+# Textured with the smiley atlas so facing is readable by eye: eyes on the front
+# (-Z), hair over the front half of the top, a chin curve under the front edge,
+# a cheek curve on each side, and a bare back (+Z).
 width: 1.0
 height: 1.0
 depth: 1.0
@@ -13,3 +17,5 @@ collision_expected: false
 navigation_expected: false
 min_material_count: 1
 rests_on_ground: true
+textures_expected:
+  - name: t_smiley_basecolor
