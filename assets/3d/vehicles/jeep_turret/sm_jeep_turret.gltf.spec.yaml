@@ -1,0 +1,74 @@
+# Acceptance criteria for sm_jeep_turret.gltf.
+#
+# A post-apocalyptic scrapper jeep with a pintle-mounted heavy machine gun on the
+# rear bed, built as the FPS hero vehicle.
+#
+# Every number here was read off the model itself:
+#     python .github/scripts/validate-model-files.py \
+#         assets/3d/vehicles/jeep_turret/sm_jeep_turret.gltf
+# Run that after any re-export.
+#
+# Every key is optional and an absent key is simply not checked -- but an
+# unrecognised one is an error, because a key the validator does not know is a
+# check that silently never runs. The valid keys are in
+# schemas/model-spec.schema.json.
+
+# Metres, checked within +/-10%. These are the design targets from the asset
+# brief, not the measured output: if a re-export drifts, the geometry is what
+# gets corrected. Measured at export: 1.900 x 2.140 x 3.807.
+#
+# The vehicle sits with its wheel contact patches on Y=0 (glTF up), so height is
+# measured from the ground to the top of the gun shield's vision hood.
+width: 1.9
+height: 2.1
+depth: 3.8
+
+# Counted per *instance*, not per unique mesh, so the four wheels cost four times
+# and the eight collision proxies are in here too. Built at 14,720; the headroom
+# is deliberate, because detail added later should not require renegotiating the
+# budget. This is a web-first jam build and the frame budget is small.
+poly_count_budget: 16000
+
+# glTF-space axes, not Blender's. "+Y" up is the glTF convention and what Godot
+# expects; Blender's +Z up converts to it on export. Measured from the node
+# graph, so a Z-up export fails here.
+up_direction: "+Y"
+
+# Declared for reviewers, not verified -- nothing in a glTF marks which side of a
+# mesh is the face, so no tool can read facing off the geometry. Reported as INFO.
+# "-Z" is Godot's forward (Vector3.FORWARD); the model was built facing +Y in
+# Blender, which is what the export converts to -Z.
+facing_direction: "-Z"
+
+# The wheels' contact patches sit on Y=0, so this drops into a level at the right
+# height. Opt-in, because plenty of assets legitimately do not touch the floor.
+# Collision counts towards the measurement -- what a vehicle rests on is its
+# collision, not its art, and the two differ by 3mm here where the faceted tyre
+# approximates the round hull.
+rests_on_ground: true
+
+# Single Empty at the origin that everything else hangs from. Worth asserting
+# because the rig depends on it: gameplay reaches turret_yaw, turret_pitch and the
+# wheel pivots through this node.
+root_node_name: "jeep_turret_root"
+
+# Eight convex proxies suffixed -convcolonly (body, hood, cage, turret and one per
+# wheel). Godot's importer reads the suffix and builds collision shapes without
+# drawing the proxy geometry. Declaring this true is not decoration -- the check
+# asserts presence *matches* the flag, so it fails in both directions.
+collision_expected: true
+navigation_expected: false
+
+# Three: the baked atlas material, blended glass for the windscreen, and an
+# emissive one for the head- and tail-light lenses. Alpha and emission are
+# material-level facts in glTF, so they cannot be regions of the atlas material.
+min_material_count: 3
+
+# One 2048 atlas set shared by every opaque surface. Matched as a case-sensitive
+# substring against each image URI. The metallic-roughness map follows the glTF
+# packing -- green is roughness, blue is metallic -- which is what lets one image
+# serve both channels.
+textures_expected:
+  - name: "t_jeep_turret_basecolor"
+  - name: "t_jeep_turret_metallic_roughness"
+  - name: "t_jeep_turret_normal"

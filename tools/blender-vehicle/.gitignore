@@ -1,0 +1,4 @@
+# Preview renders from build.blockout() / build.produce(). Regenerated on every
+# run and only useful for the review they were made for.
+_renders/
+__pycache__/
