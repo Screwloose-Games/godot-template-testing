@@ -1,0 +1,17 @@
+; The corridor's main surface. Deliberately LIGHT grey.
+;
+; The creature is black, and a black creature on a dark wall in a dim corridor is
+; the highest-probability cosmetic failure in this example -- it renders perfectly
+; and reads as nothing at all. Albedo below about 0.45 here and the silhouette
+; stops existing. This is a readability constraint, not a taste one; if you darken
+; it, check tools/_shots/08_ribbon_solo.png before you keep the change.
+;
+; Fully rough and non-metallic: a specular highlight sliding along a procedurally
+; generated wall makes the seams between ring quads visible even when the geometry
+; is watertight.
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+albedo_color = Color(0.53, 0.54, 0.57, 1)
+metallic = 0.0
+roughness = 0.92

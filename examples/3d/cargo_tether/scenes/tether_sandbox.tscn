@@ -1,0 +1,252 @@
+[gd_scene load_steps=15 format=3]
+
+; STAGE 1 FIRST PLAYABLE. Hand-authored, not generated -- scenes/cargo_run.tscn is
+; the generated one.
+;
+; This scene exists to answer one question as early as possible: is towing a
+; swinging mass through tight space fun? So it is deliberately missing everything
+; that is not that question. No HUD, no turrets, no damage, no scoring, no course.
+; Eight rocks in a rough line, a ship, a crate and a camera.
+;
+; Fly it. Work R and F. If the swing is not interesting here, no amount of course
+; design later will rescue it -- retune in this order: cargo mass, then spring_k,
+; then the winch band, then damping_c, and thrust LAST, because thrust also sets
+; the pendulum period (omega = sqrt(a / L)) and so moves two feelings at once.
+;
+; Open it and press F6, or:
+;   godot --path <project root> res://examples/3d/cargo_tether/scenes/tether_sandbox.tscn
+;
+; Every ext_resource path here is RELATIVE. The Godot editor rewrites them to
+; absolute res:// paths on re-save, which breaks self-containment silently --
+; verify_cargo_tether_static check 8 greps for that.
+
+[ext_resource type="PackedScene" path="../actors/ship/ship.tscn" id="1_ship"]
+[ext_resource type="PackedScene" path="../actors/cargo/cargo.tscn" id="2_cargo"]
+[ext_resource type="Script" path="../components/tether/tether_link.gd" id="3_tether"]
+[ext_resource type="PackedScene" path="../components/tether/tether_line.tscn" id="4_line"]
+[ext_resource type="PackedScene" path="../components/camera/ship_chase_rig.tscn" id="5_rig"]
+[ext_resource type="Material" path="../materials/asteroid.tres" id="6_rock"]
+[ext_resource type="PackedScene" path="../run/delivery_dock.tscn" id="7_dock"]
+[ext_resource type="Script" path="../run/tether_run.gd" id="8_run"]
+[ext_resource type="PackedScene" path="../ui/tether_hud.tscn" id="9_hud"]
+[ext_resource type="PackedScene" path="../threats/projectile_pool.tscn" id="10_pool"]
+[ext_resource type="PackedScene" path="../threats/turret.tscn" id="11_turret"]
+
+; A FLAT COLOUR BACKGROUND (mode 1), not a procedural sky.
+;
+; A ProceduralSkyMaterial draws a sun disk and scattering halo for every
+; DirectionalLight3D in the scene, so with a sun and a fill light it painted two
+; soft gradients and a visible diagonal seam across empty space. Flattening the
+; sky/ground colours did not remove it, because the seam was the scattering, not
+; the horizon. Deep space is a flat dark field; the generated course gets its
+; backdrop from a starfield MultiMesh instead, which costs one draw call.
+;
+; Ambient comes from a COLOUR (source 2), not from the sky (source 3). Sky ambient
+; is the obvious choice and it is wrong here: the background is near-black, so
+; sampling it lights the scene with almost nothing and every surface facing away
+; from the sun goes to pure black. The ship became an unreadable silhouette.
+;
+; No sdfgi_*, ssao_*, ssil_*, ssr_* or volumetric_fog_* anywhere in here: all of
+; them are unsupported on the GL Compatibility renderer this project targets.
+[sub_resource type="Environment" id="Environment_space"]
+background_mode = 1
+background_color = Color(0.016, 0.019, 0.036, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.36, 0.42, 0.55, 1)
+ambient_light_energy = 0.32
+tonemap_mode = 2
+
+[sub_resource type="SphereMesh" id="SphereMesh_rock"]
+radius = 1.0
+height = 2.0
+radial_segments = 8
+rings = 4
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_rock"]
+radius = 1.0
+
+[node name="TetherSandbox" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_space")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.86, -0.25, 0.44, 0, 0.87, 0.49, -0.51, -0.42, 0.75, 0, 0, 0)
+light_energy = 1.1
+shadow_enabled = true
+directional_shadow_mode = 1
+directional_shadow_max_distance = 180.0
+
+; Fill from roughly the opposite side, no shadows. One extra directional light is
+; a negligible cost even on GL Compatibility, and without it every shape in the
+; scene has one readable face and one black one -- which on a greybox with no
+; texture to carry the form means you cannot tell which way the ship is pointing.
+[node name="Fill" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.86, 0.18, -0.48, 0, 0.94, 0.35, 0.51, 0.3, -0.81, 0, 0, 0)
+light_energy = 0.22
+shadow_enabled = false
+
+; EVERY node below that points at another node carries node_paths=. That is not
+; decoration. Without it Godot assigns the NodePath to the Node-typed property,
+; fails to resolve it because the target is not in the tree yet, and leaves the
+; property NULL with no error anywhere. TetherLink then bails out of
+; _physics_process on its null check every frame and the only symptom is a
+; separation of exactly 0.00 -- a tether that renders, reports and does nothing.
+
+[node name="Ship" parent="." node_paths=PackedStringArray("tether") instance=ExtResource("1_ship")]
+tether = NodePath("../Tether")
+
+[node name="Cargo" parent="." instance=ExtResource("2_cargo")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 18.2)
+
+[node name="Tether" type="Node" parent="." node_paths=PackedStringArray("ship", "cargo", "ship_anchor", "cargo_anchor")]
+script = ExtResource("3_tether")
+ship = NodePath("../Ship")
+cargo = NodePath("../Cargo")
+ship_anchor = NodePath("../Ship/TetherAnchor")
+cargo_anchor = NodePath("../Cargo/TetherAnchor")
+
+[node name="TetherLine" parent="." node_paths=PackedStringArray("tether") instance=ExtResource("4_line")]
+tether = NodePath("../Tether")
+
+[node name="CameraRig" parent="." node_paths=PackedStringArray("target", "secondary") instance=ExtResource("5_rig")]
+target = NodePath("../Ship")
+secondary = NodePath("../Cargo")
+
+; Past the last rock, with a run-out so arriving is a decision rather than a
+; surprise. You must fly THROUGH the ring: it is solid geometry on the obstacle
+; layer, and threading a 22 m hole with a crate swinging behind you is the last
+; test of everything the rocks taught you.
+[node name="Dock" parent="." instance=ExtResource("7_dock")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -420)
+
+[node name="Projectiles" parent="." instance=ExtResource("10_pool")]
+
+[node name="Run" type="Node" parent="." node_paths=PackedStringArray("ship", "cargo", "tether", "dock", "projectiles")]
+script = ExtResource("8_run")
+ship = NodePath("../Ship")
+cargo = NodePath("../Cargo")
+tether = NodePath("../Tether")
+dock = NodePath("../Dock")
+projectiles = NodePath("../Projectiles")
+par_time = 12.0
+
+[node name="Hud" parent="." node_paths=PackedStringArray("run", "cargo") instance=ExtResource("9_hud")]
+run = NodePath("../Run")
+cargo = NodePath("../Cargo")
+
+; Three emplacements, set back from the corridor so they cover it in profile
+; rather than head-on -- a turret you fly straight at is a turret whose lead
+; solution is trivial. Each gets a distinct seed_index so their spread rolls do
+; not correlate, which is what stops three of them landing the same miss.
+[node name="Turrets" type="Node3D" parent="."]
+
+[node name="Turret1" parent="Turrets" instance=ExtResource("11_turret")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32, 6, -95)
+seed_index = 1
+
+[node name="Turret2" parent="Turrets" instance=ExtResource("11_turret")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, -6, -180)
+seed_index = 2
+
+[node name="Turret3" parent="Turrets" instance=ExtResource("11_turret")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26, 8, -300)
+seed_index = 3
+
+[node name="Rocks" type="Node3D" parent="."]
+
+[node name="Rock1" type="AnimatableBody3D" parent="Rocks"]
+transform = Transform3D(6, 0, 0, 0, 6, 0, 0, 0, 6, -14, 2, -50)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Rocks/Rock1"]
+mesh = SubResource("SphereMesh_rock")
+material_override = ExtResource("6_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Rocks/Rock1"]
+shape = SubResource("SphereShape3D_rock")
+
+[node name="Rock2" type="AnimatableBody3D" parent="Rocks"]
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 16, -3, -70)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Rocks/Rock2"]
+mesh = SubResource("SphereMesh_rock")
+material_override = ExtResource("6_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Rocks/Rock2"]
+shape = SubResource("SphereShape3D_rock")
+
+[node name="Rock3" type="AnimatableBody3D" parent="Rocks"]
+transform = Transform3D(7, 0, 0, 0, 7, 0, 0, 0, 7, 0, 12, -95)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Rocks/Rock3"]
+mesh = SubResource("SphereMesh_rock")
+material_override = ExtResource("6_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Rocks/Rock3"]
+shape = SubResource("SphereShape3D_rock")
+
+[node name="Rock4" type="AnimatableBody3D" parent="Rocks"]
+transform = Transform3D(9, 0, 0, 0, 9, 0, 0, 0, 9, -22, -8, -120)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Rocks/Rock4"]
+mesh = SubResource("SphereMesh_rock")
+material_override = ExtResource("6_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Rocks/Rock4"]
+shape = SubResource("SphereShape3D_rock")
+
+[node name="Rock5" type="AnimatableBody3D" parent="Rocks"]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 10, 6, -150)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Rocks/Rock5"]
+mesh = SubResource("SphereMesh_rock")
+material_override = ExtResource("6_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Rocks/Rock5"]
+shape = SubResource("SphereShape3D_rock")
+
+[node name="Rock6" type="AnimatableBody3D" parent="Rocks"]
+transform = Transform3D(7, 0, 0, 0, 7, 0, 0, 0, 7, -6, -14, -175)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Rocks/Rock6"]
+mesh = SubResource("SphereMesh_rock")
+material_override = ExtResource("6_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Rocks/Rock6"]
+shape = SubResource("SphereShape3D_rock")
+
+[node name="Rock7" type="AnimatableBody3D" parent="Rocks"]
+transform = Transform3D(8, 0, 0, 0, 8, 0, 0, 0, 8, 24, 4, -205)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Rocks/Rock7"]
+mesh = SubResource("SphereMesh_rock")
+material_override = ExtResource("6_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Rocks/Rock7"]
+shape = SubResource("SphereShape3D_rock")
+
+[node name="Rock8" type="AnimatableBody3D" parent="Rocks"]
+transform = Transform3D(6, 0, 0, 0, 6, 0, 0, 0, 6, -16, 10, -240)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Rocks/Rock8"]
+mesh = SubResource("SphereMesh_rock")
+material_override = ExtResource("6_rock")
+
+[node name="Collision" type="CollisionShape3D" parent="Rocks/Rock8"]
+shape = SubResource("SphereShape3D_rock")

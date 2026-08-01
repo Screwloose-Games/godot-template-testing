@@ -1,0 +1,20 @@
+; The tentacle ribbons.
+;
+; This resource exists to be READ, not assigned: TentacleRibbons builds its own
+; StandardMaterial3D in _ready() because the ribbon is a world-space ImmediateMesh
+; and needs `vertex_color_use_as_albedo` to carry the per-strand stroke pulse.
+; Keeping the settings here too means the values are diffable and documented in one
+; place rather than buried in a constructor.
+;
+; UNSHADED and CULL_DISABLED are both load-bearing. Unshaded because a strand is a
+; flat ribbon with no real volume, so any lighting on it reads as the ribbon
+; flickering as it twists. Cull-disabled because the ribbon is rebuilt every frame
+; facing the camera and its winding flips whenever a strand crosses its own axis.
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+shading_mode = 0
+cull_mode = 2
+vertex_color_use_as_albedo = true
+albedo_color = Color(1, 1, 1, 1)
+disable_receive_shadows = true

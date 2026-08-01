@@ -1,0 +1,11 @@
+; Structural ribs every 8 m. Darker and slightly metallic so they read as a
+; different material to the shell rather than as a lighting artefact.
+;
+; Their real job is PARALLAX: a perfectly smooth tube gives the eye nothing to
+; measure speed against, and the crawl reads as much slower than it is.
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+albedo_color = Color(0.33, 0.34, 0.38, 1)
+metallic = 0.35
+roughness = 0.6

@@ -1,0 +1,138 @@
+[gd_scene load_steps=7 format=3]
+
+; The creature.
+;
+; NO COLLISION SHAPE ANYWHERE IN HERE, and that is the design rather than an
+; omission. The body is kinematic (see crawler_body.gd) and everything it knows
+; about the world comes from raycasts, so a collider would do nothing except give
+; the camera's SpringArm3D something to catch on. `[kinematic]` in the static suite
+; fails if a RigidBody3D or CharacterBody3D ever appears here.
+;
+; Three layers of node, each with one job:
+;
+;   Crawler    position and orientation. Written once per tick, always unit scale.
+;   %Hull      the SQUASH. Scaling this instead of the root is deliberate -- scaling
+;              the root would also scale the shoulder offsets below and the probe
+;              fan's origin, so the creature would grow tentacle reach as it flexed.
+;   %Shoulders where the tentacles grow from. Read by TentacleArray, never moved.
+
+[ext_resource type="Script" path="crawler_body.gd" id="1_body"]
+[ext_resource type="Material" path="../../materials/crawler_flesh.tres" id="2_flesh"]
+[ext_resource type="Material" path="../../materials/crawler_outline.tres" id="3_outline"]
+[ext_resource type="Script" path="../../components/tentacle/tentacle_array.gd" id="4_tentacles"]
+[ext_resource type="PackedScene" path="../../components/tentacle/tentacle_ribbons.tscn" id="5_ribbons"]
+
+; Low segment counts on purpose: this is a web-first GL Compatibility target and the
+; creature is a black blob whose silhouette does all the work. 12x6 is plenty.
+[sub_resource type="SphereMesh" id="SphereMesh_lump"]
+radius = 0.5
+height = 1.0
+radial_segments = 12
+rings = 6
+
+; node_paths= on the ROOT node wires the body to its own tentacles. The instancing
+; scene adds its own node_paths for `target_marker`; the two lists are independent,
+; so an outer scene overriding one property does not drop the other.
+[node name="Crawler" type="Node3D" node_paths=PackedStringArray("tentacles")]
+script = ExtResource("1_body")
+tentacles = NodePath("Tentacles")
+
+[node name="Hull" type="Node3D" parent="."]
+unique_name_in_owner = true
+
+; The INVERTED-HULL OUTLINE, and it is first in the list because it must draw before
+; the body it sits behind.
+;
+; It is the same sphere at 108%, with crawler_outline.tres culling FRONT faces -- so
+; only the parts of the enlarged shell that fall behind the real body survive, which
+; is exactly the silhouette. Without it a black creature against a grey wall in a dim
+; corridor is genuinely invisible: it renders perfectly and reads as nothing, which
+; is the highest-probability cosmetic failure in this whole example.
+[node name="Outline" type="MeshInstance3D" parent="Hull"]
+transform = Transform3D(1.404, 0, 0, 0, 1.08, 0, 0, 0, 2.16, 0, 0, 0)
+mesh = SubResource("SphereMesh_lump")
+material_override = ExtResource("3_outline")
+cast_shadow = 0
+
+; The body proper: a sphere stretched 1.3 x 1.0 x 2.0, so it is longer than it is
+; wide and its facing is readable from any angle. Max half-extent is 1.0 m against a
+; body_radius of 1.2, so the visual never pokes through a wall the solver thinks it
+; is clear of.
+[node name="Core" type="MeshInstance3D" parent="Hull"]
+transform = Transform3D(1.3, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0)
+mesh = SubResource("SphereMesh_lump")
+material_override = ExtResource("2_flesh")
+
+; Three asymmetric lumps. Purely cosmetic, and worth the three draw calls: a
+; perfectly smooth ellipsoid has no features to read rotation against, so the writhe
+; and the roll-toward-the-pull are both invisible on it.
+[node name="Lump1" type="MeshInstance3D" parent="Hull"]
+transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0.35, 0.28, -0.4)
+mesh = SubResource("SphereMesh_lump")
+material_override = ExtResource("2_flesh")
+
+[node name="Lump2" type="MeshInstance3D" parent="Hull"]
+transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, -0.4, 0.15, 0.3)
+mesh = SubResource("SphereMesh_lump")
+material_override = ExtResource("2_flesh")
+
+[node name="Lump3" type="MeshInstance3D" parent="Hull"]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0.1, -0.35, 0.6)
+mesh = SubResource("SphereMesh_lump")
+material_override = ExtResource("2_flesh")
+
+; Six shoulders on a ring, forward of the body's middle (-Z is forward).
+;
+; The ring is FLATTENED on Y (0.7x) rather than circular, so the strands splay wide
+; and low like a spider rather than spraying evenly in all directions -- a circular
+; ring puts two tentacles straight up, where in a corridor there is usually nothing
+; interesting to grab.
+;
+; Angles are sector centres: TAU*i/6 + TAU/12, so no shoulder sits exactly on an
+; axis and the six sectors tile the circle without a seam at zero. TentacleArray
+; re-derives the same angles for its search cones -- these markers are where the
+; strands are DRAWN from, the cone directions are computed.
+[node name="Shoulders" type="Node3D" parent="."]
+unique_name_in_owner = true
+
+[node name="Shoulder0" type="Marker3D" parent="Shoulders"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6495, 0.2625, -0.35)
+
+[node name="Shoulder1" type="Marker3D" parent="Shoulders"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.525, -0.35)
+
+[node name="Shoulder2" type="Marker3D" parent="Shoulders"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6495, 0.2625, -0.35)
+
+[node name="Shoulder3" type="Marker3D" parent="Shoulders"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6495, -0.2625, -0.35)
+
+[node name="Shoulder4" type="Marker3D" parent="Shoulders"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.525, -0.35)
+
+[node name="Shoulder5" type="Marker3D" parent="Shoulders"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6495, -0.2625, -0.35)
+
+; The strand lifecycle. A CHILD of the body, which fixes the update order: Godot
+; runs _physics_process in tree order, so CrawlerBody writes this tick's transform
+; before TentacleArray reads it, and the tentacles are never chasing a stale body.
+;
+; The reverse direction lags by one tick -- CrawlerBody applies force from the anchor
+; state computed on the PREVIOUS tick. That is deliberate. Solving it both ways in
+; one tick would need an iteration and buys nothing at 60 Hz; a 16 ms lag on a force
+; whose envelope ramps over 340 ms is invisible.
+;
+; node_paths= is mandatory on any node assigning a Node-typed @export. Without it
+; Godot stores the NodePath, fails to resolve it because the target is not in the
+; tree yet, and leaves the property NULL WITH NO ERROR ANYWHERE -- the tentacles
+; would simply never run and nothing would say so.
+[node name="Tentacles" type="Node3D" parent="." node_paths=PackedStringArray("body", "shoulders")]
+script = ExtResource("4_tentacles")
+body = NodePath("..")
+shoulders = NodePath("../Shoulders")
+
+; The drawing half. Reads the strand state above and turns it into geometry; applies
+; nothing, decides nothing. Listed after Tentacles so it builds this tick's curve
+; from this tick's state rather than last tick's.
+[node name="Ribbons" parent="." node_paths=PackedStringArray("tentacles") instance=ExtResource("5_ribbons")]
+tentacles = NodePath("../Tentacles")

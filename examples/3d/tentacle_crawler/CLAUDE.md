@@ -1,0 +1,202 @@
+# tentacle_crawler
+
+Godot 4.7 · GL Compatibility renderer · Jolt Physics · GDScript only (no C#).
+
+A self-contained example inside a larger project. See `README.md` for what it does and the four
+self-containment rules — the short version: paths are relative to the file that uses them,
+`load()`/`FileAccess` go through the local `_res()` helper, anything that would be a project
+setting is registered at runtime by a node in the scene that needs it
+(`components/marker_pilot/crawler_input_actions.gd`), and an `@export` beats a project setting.
+Do not add anything here that requires editing the host `project.godot`.
+
+## Verification before declaring done
+
+A `.gd` edit is not finished when it is written. It is finished when it parses and runs.
+
+- The `PostToolUse` hook runs `tools/check_gd.ps1` on every edited `.gd` (Godot `--check-only`
+  + `gdlint`). Fix what it reports before moving on.
+- **The hook cannot see any of the traps below.** Those need a real run.
+- Both suites, and the output pasted — do not infer success from "the file saved":
+  ```
+  godot --headless --path <root> --script res://examples/3d/tentacle_crawler/tools/verify_tentacle_crawler_static.gd
+  godot --headless --path <root>         res://examples/3d/tentacle_crawler/tools/verify_tentacle_crawler_runtime.tscn
+  ```
+- Anything touching the leash, the anchor gains, the drag or the tuning constants must ALSO
+  re-run the measurement harness and paste the numbers — the README quotes them, so they are
+  not allowed to drift silently:
+  ```
+  godot --headless --path <root> res://examples/3d/tentacle_crawler/tools/measure_crawl_response.tscn
+  ```
+- Anything touching the ribbons, the materials, the lighting or the corridor generator must
+  re-run the capture tool **and actually look at the PNGs**. Every physics assertion in this
+  folder passes against a creature that renders as nothing at all.
+  ```
+  godot --path <root> res://examples/3d/tentacle_crawler/tools/capture_crawler.tscn
+  ```
+- Use the **`_console.exe`** build on Windows. `C:\godot\godot.cmd` wraps the non-console binary
+  and ends with `pause > nul`, so it hangs headless runs and detaches stdout.
+- `gdformat` owns formatting and will rewrite most files you touch. Run it, then **re-run the
+  suites** — and say explicitly whether anything else broke, not just the case you were fixing.
+
+## Traps that no linter catches
+
+Every one of these was hit while building this example. `gdlint` and `godot --check-only`
+report nothing for any of them.
+
+**GODOT TREATS CLOCKWISE WINDING AS FRONT-FACING, and an outward-wound trimesh is invisible to
+raycasts.** `ConcavePolygonShape3D.backface_collision` defaults to `false`, so the generated
+corridor's walls did not exist as far as any query was concerned. The failure does not look
+like a winding bug: the corridor renders perfectly *from outside*, the creature still finds a
+few anchors on rib geometry, and nothing errors anywhere. The tell was the body probe reporting
+its full 25 m range in all fourteen directions inside a 9 m tube. The hand-authored sandbox
+never hit it because `BoxShape3D` is a solid convex primitive with no winding to get wrong.
+
+**A `Transform3D` literal in a `.tscn` takes the basis ROWS, so the local axes are the COLUMNS.**
+A `DirectionalLight3D` emits along its local −Z, which is the negated *third column* —
+components 3, 6 and 9 — not components 7, 8 and 9. Reading it as columns builds a light aimed
+somewhere else entirely, and you then write a comment describing the direction you meant rather
+than the one you got. Probe it rather than deriving it.
+
+**A sealed tube with `shadow_enabled` renders its whole interior at ambient only.** The
+directional light is outside the shell, so the shell occludes it completely: uniform flat grey,
+no form on anything, and a black creature that is genuinely invisible. It looks exactly like a
+broken material. Both lights here have shadows off, deliberately.
+
+**A degenerate triangle-strip stitch must repeat the PREVIOUS strand's last vertex, then the
+new strand's first.** Emitting the new strand's first vertex twice — the obvious reading of
+"insert two degenerates" — leaves one triangle with real area spanning from the end of one
+tentacle to the root of the next. It renders as a thin black sliver that reads as a graphics
+glitch rather than as a bug in your own function. `single_surface` on `TentacleRibbons` exists
+as a bisection switch: unstitched is the known-good shape.
+
+**`const X: PackedStringArray = PackedStringArray([...])` is not a constant expression.** It is
+a parse error with no line of context beyond the constant's name. Use `Array[String]`.
+
+**`global_transform` and `global_basis` SETTERS fail on a node that is not in the SceneTree.**
+They read the parent chain to solve for a local value, print `Condition "!is_inside_tree()" is
+true`, and write identity. Scene generators must assign the local `transform`/`basis`.
+
+**`PackedScene.pack()` writes `node_paths=` itself** when a Node-typed `@export` holds an actual
+object reference. Assigning the object in a generator is therefore *more* reliable than
+hand-writing the attribute — hand-writing is where the silent-null trap lives.
+
+**`ResourceSaver` writes absolute `res://` paths and `FLAG_RELATIVE_PATHS` still does nothing to
+text scenes in 4.7.1.** The generator rewrites its own output; `[paths]` greps for the absolute
+form.
+
+**A grep for a banned token fires on the comment that bans it.** `[render]` reported five
+violations against `crawl_sandbox.tscn` whose only crime was a header explaining that none of
+those effects may be used. Both `.gd` (`#`) and `.tscn`/`.tres` (`;`) need their comments
+stripped before any source check — the files in this repo are heavily commented by house style,
+and every rule is written down next to the code that obeys it.
+
+**A check that prints PASS unconditionally will print it directly under its own failures.**
+`[render] PASS` appeared beneath five `[render] FAIL` lines. Compare the failure count before
+and after; a summary that gets skimmed and believed has to be right.
+
+**Reusing one world across checks makes later checks measure earlier ones.** `[input-owner]`
+reported a broken input map because the preceding check had flown the marker into the far end of
+a 60 m corridor, where pressing forward moves it exactly nothing. Reload between checks.
+
+**A control that shares a mechanism with the thing it controls for is not a control.** The
+push-off check left the marker wired, so what it actually measured was the *leash* hauling the
+creature back to the corridor axis — it reported a working probe on a build where `probe_gain`
+was zero. Detach everything the variable under test is not.
+
+**Gating a force by projecting onto the direction to a target breaks down at the target.** The
+drive gate projected out the component along `_travel`, which is correct arithmetic and useless
+in practice: once the creature has arrived, `_travel` is the bearing to a point two metres away
+and swings through large angles every tick, so almost none of a 10 m/s² pull was removed. The
+creature thrashed past a stationary marker at a mean of 5.6 m/s while the player held nothing.
+Gate the whole force by a scalar instead.
+
+**A launch ceiling has to count strands that are still in flight.** Counting only *planted*
+strands let a launch go out while another was mid-reach, and the 2..4 band was measured
+overshooting to five of six.
+
+**The orbit rig's resting pitch is a flight bias, not a framing choice.** Forward is measured
+off that rig with its pitch included, so the angle it sits at when nobody has touched the mouse
+is the angle a held `W` flies at. At the -0.25 rad it was framed with, a player holding forward
+and nothing else sinks ~2.2 m/s and is scraping the corridor floor within seconds — which reads
+as the creature being dragged down, not as the camera being tilted. Any change to `_pitch`'s
+initial value is a handling change.
+
+**A camera tool that toggles blindly captures the wrong camera.** `capture_crawler` called
+`director.toggle()` twice around a shot it named `orbit_view`; the day orbit became the default
+that filename started containing a chase shot. Ask for the rig you want by name
+(`set_orbit_active`), not for "the other one".
+
+**A `SpringArm3D` refusing to pass through a wall is the arm working.** The chase camera sat two
+metres off the creature's back with the blob filling half the frame, because the spawn point was
+two metres inside a corridor mouth and the arm correctly declined to go outside it. The bug was
+the spawn depth.
+
+**Lambdas capture locals by value.** A signal handler that sets a flag must use a member
+variable or a named method.
+
+**Nodes added during `SceneTree._initialize()` never receive `_ready()`.** Every tool here is a
+`.tscn` wrapper for that reason, except the two that genuinely only inspect files. Running one
+of those as a bare `--script` reports nothing and exits 0, which looks exactly like a pass.
+
+**`godot --check-only` exit codes are unreliable.** Analyzer errors print `Parse Error` and
+still exit 0. Grep the output; `tools/check_gd.ps1` already does.
+
+**A new `class_name` does not exist until the project is re-imported.** Run
+`godot --headless --path <root> --import` once after adding one, or every file referring to it
+fails with `Could not find type`. The same run is what generates the `.uid` sidecars that
+`[uid]` requires.
+
+## Component boundaries
+
+- **`CrawlerBody` is the only file that writes the body's transform.** One integrator, one
+  owner, one `global_transform =` at the end of the tick.
+- **`TentacleArray` is the only file that raycasts for anchors**, and the only one that owns
+  strand phase or lifecycle. It applies no force at all.
+- **`MarkerPilot` is the only file that reads input.** It owns `Input`, `Input.mouse_mode`, the
+  `ui_cancel` release and every `crawler_*` action. That is what lets the creature be driven by
+  a verifier with no player, no camera and no HUD in the scene. `[input]` greps for it.
+- **The live orbit rig owns the movement FRAME; the marker adopts it.** `MarkerPilot` still
+  reads the stick, but while `CrawlerCameraDirector.wants_look()` is true it takes its facing
+  from `drive_basis()` rather than accumulating mouse deltas, so forward is away from the
+  camera. The rig that takes the mouse and the rig that defines forward are the same flag on
+  purpose. With no director wired the marker falls back to its own frame, which is the state
+  every tool and both suites run in — a change to the drive frame will not show up there.
+- **`TentacleRibbons` reads state and writes geometry.** It must not contain `apply_`, `Input.`
+  or `intersect_ray`, and `[input]` asserts that too.
+- **`TentacleTuning` and `CrawlerMath` have no engine dependencies at all** — the same contract
+  as cargo_tether's `TetherWinch`. The solver, the renderer and the verifier read one copy of
+  every predicate instead of three files spelling `0.25`.
+- **The creature is generator-agnostic.** It knows the world only through raycasts.
+  `[independence]` greps `actors/` and `components/` for `Centerline`, `Path3D`, `Curve3D` and
+  `corridor_run`, with comments stripped, which is what turns that from an intention into a rule.
+
+## Project-specific invariants
+
+- **`scenes/corridor_run.tscn` is GENERATED.** Edit `tools/build_corridor_run.gd` and re-run it.
+  `scenes/crawl_sandbox.tscn` is hand-authored and is the faster place to test a change.
+- **The generator refuses to emit a broken corridor** rather than emitting one and hoping: below
+  2.2 m clearance, below a 9 m bend radius (at these widths the inner wall self-intersects and
+  opens a *hole* in the shell), or any two non-adjacent rings within 2 m.
+- **`maxf(along, 0.0)` on the stroke term is load-bearing.** Without it two strands gripping
+  opposite walls and stroking together produce a net force of zero while both visibly heave, and
+  the creature vibrates in place — which reads as a physics bug, not a tuning problem. Same
+  clamp, same reason, as the leash and as cargo_tether's `TetherLink`.
+- **The drive ramp is measured from `leash_slack`, not from zero.** The creature's resting place
+  is exactly a leash-length behind the marker; a ramp measured from zero commands full drive at
+  that distance, so it hauls, overshoots, gets pulled back and hauls again — a limit cycle on a
+  player who is not touching the controls.
+- **`brake_multiplier` is the entire "drags itself" read**, not a comfort feature. Every
+  assertion in the suite still passes with it at 1.0; the creature just glides.
+- **The `CREATURE` collision bit is reserved and deliberately unoccupied.** `[layers]` fails if
+  anything claims it, which is how the next person finds out the body is kinematic on purpose
+  before they change it.
+- **Numbers in `README.md` are measured, not chosen.** Retune anything and re-run
+  `measure_crawl_response`, then update the table or delete it. A quoted number that no longer
+  holds is worse than no number.
+
+## Style
+
+Tabs (width 4), LF. `class_name` then `extends` at the top. Typed `@export`/`@onready` with
+explicit `: Type` and `-> void` returns. `%UniqueName` access over `$Path`. Member order:
+`class_name` → `extends` → signals → enums → consts → exports → public → private → onready.
+Lines under 100 characters; `gdformat` owns the rest and will reflow what you write.

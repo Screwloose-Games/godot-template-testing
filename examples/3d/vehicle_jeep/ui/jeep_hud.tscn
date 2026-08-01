@@ -1,0 +1,98 @@
+; Debug readout plus crosshair. The crosshair is three ColorRects rather than a
+; texture, so this folder stays self-contained with nothing to import.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="jeep_hud.gd" id="1_hud"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0, 0, 0, 0.55)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="JeepHud" type="CanvasLayer"]
+layer = 5
+script = ExtResource("1_hud")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 16.0
+offset_bottom = 16.0
+grow_horizontal = 1
+grow_vertical = 1
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Column" type="VBoxContainer" parent="Root/Panel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="Summary" type="Label" parent="Root/Panel/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.94, 0.78, 1)
+theme_override_font_sizes/font_size = 16
+text = "--"
+
+[node name="Wheels" type="Label" parent="Root/Panel/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.87, 0.92, 1)
+theme_override_font_sizes/font_size = 13
+text = "--"
+
+[node name="Crosshair" type="Control" parent="Root"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HBar" type="ColorRect" parent="Root/Crosshair"]
+layout_mode = 0
+offset_left = -8.0
+offset_top = -1.0
+offset_right = 8.0
+offset_bottom = 1.0
+mouse_filter = 2
+color = Color(1, 1, 1, 0.75)
+
+[node name="VBar" type="ColorRect" parent="Root/Crosshair"]
+layout_mode = 0
+offset_left = -1.0
+offset_top = -8.0
+offset_right = 1.0
+offset_bottom = 8.0
+mouse_filter = 2
+color = Color(1, 1, 1, 0.75)
+
+[node name="Dot" type="ColorRect" parent="Root/Crosshair"]
+layout_mode = 0
+offset_left = -1.5
+offset_top = -1.5
+offset_right = 1.5
+offset_bottom = 1.5
+mouse_filter = 2
+color = Color(1, 0.42, 0.3, 1)

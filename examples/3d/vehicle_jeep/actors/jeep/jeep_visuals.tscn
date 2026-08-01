@@ -1,0 +1,36 @@
+; Everything the jeep looks like. Instanced into jeep.tscn as %Visuals.
+;
+; This is the ONLY file in the example that references the shared asset. The model
+; lives outside this folder, at assets/3d/vehicles/jeep_turret/, because copying
+; ~16 MB of PNGs into an examples folder in a web-first repo is not a trade worth
+; making. Relocating this example is therefore a one-path edit here, and
+; verify_jeep_static.gd checks 1 and 2 fail immediately if it ever breaks.
+;
+; DO NOT add uid="uid://bssqwg5tkirgv" to that reference. That uid belongs to
+; sm_jeep_turret.GLTF, not to the container scene beside it -- the container has no
+; uid of its own. Godot resolves uid before path, so writing it here silently loads
+; the raw glTF instead: same meshes, same wheel pivots, but none of the container
+; scene's mk_* markers, and JeepVisuals._ready() then dies on a null steering axis.
+; Verified, not guessed: it is how the first version of this file failed.
+;
+; The headlights are authored here with no transform: JeepVisuals._ready() places
+; them from mk_headlight_l/r so the positions stay owned by the asset.
+
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="jeep_visuals.gd" id="1_visuals"]
+[ext_resource type="PackedScene" path="../../../../../assets/3d/vehicles/jeep_turret/sm_jeep_turret.tscn" id="2_model"]
+
+[node name="JeepVisuals" type="Node3D"]
+script = ExtResource("1_visuals")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+unique_name_in_owner = true
+
+[node name="HeadlightL" type="SpotLight3D" parent="."]
+unique_name_in_owner = true
+visible = false
+
+[node name="HeadlightR" type="SpotLight3D" parent="."]
+unique_name_in_owner = true
+visible = false

@@ -1,0 +1,65 @@
+[gd_scene load_steps=7 format=3]
+
+; The towed crate. 1.8 x 1.8 x 2.4 m at 600 kg.
+;
+; THE MASS RATIO IS THE DESIGN. 600 against the ship's 1000 is 0.6, and that one
+; number decides whether towing feels like a load or like a chore:
+;   * you keep 62.5% of your free acceleration while towing (28 -> 17.5 m/s^2)
+;   * a crate swung to 2.5 m of stretch pulls 17 kN, which is 17 m/s^2 sideways
+;     on the ship -- comparable to your own main engine, so it can genuinely
+;     throw you off line
+; At 0.2 the crate is scenery; at 1.0 every manoeuvre is a chore.
+; verify_cargo_tether_static check 2 and runtime [tow-cost] both pin it.
+;
+; The bounce is deliberate: hits should ricochet the crate back into play rather
+; than parking it against the rock it just hit.
+
+[ext_resource type="Script" path="cargo_body.gd" id="1_cargo"]
+[ext_resource type="Material" path="../../materials/cargo.tres" id="2_crate_mat"]
+[ext_resource type="Script" path="../../components/damage/tether_damage.gd" id="3_damage"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_crate"]
+size = Vector3(1.8, 1.8, 2.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_crate"]
+size = Vector3(1.8, 1.8, 2.4)
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_crate"]
+friction = 0.35
+bounce = 0.25
+
+[node name="Cargo" type="RigidBody3D"]
+collision_layer = 4
+collision_mask = 35
+mass = 600.0
+physics_material_override = SubResource("PhysicsMaterial_crate")
+gravity_scale = 0.0
+continuous_cd = false
+can_sleep = false
+linear_damp_mode = 1
+linear_damp = 0.0
+angular_damp_mode = 1
+angular_damp = 0.35
+script = ExtResource("1_cargo")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_crate")
+material_override = ExtResource("2_crate_mat")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_crate")
+
+[node name="TetherAnchor" type="Marker3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.2)
+
+; The crate is softer than the hull and it is what the run is scored on.
+; 12 turret hits kill it; a 40 m/s slam costs 51 and a 60 m/s slam 83, while
+; anything under 8 m/s is free.
+[node name="Damage" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("3_damage")
+max_integrity = 100.0
+projectile_damage = 8.0
+impact_free_speed = 8.0
+impact_per_ms = 1.6

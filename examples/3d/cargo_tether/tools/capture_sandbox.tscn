@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+; Wrapper for capture_sandbox.gd. Run this WITHOUT --headless: the headless
+; driver renders nothing, so every capture comes back blank and looks like a bug
+; in the thing you were trying to photograph.
+
+[ext_resource type="Script" path="capture_sandbox.gd" id="1_capture"]
+
+[node name="CaptureSandbox" type="Node"]
+script = ExtResource("1_capture")

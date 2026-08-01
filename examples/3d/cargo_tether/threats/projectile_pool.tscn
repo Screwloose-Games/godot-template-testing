@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+; One of these per scene, wired into TetherRun.projectiles. Every turret shoots
+; through it, so all the tracers in the game are a single MultiMesh and a single
+; draw call. The MultiMesh itself is built in code -- there is nothing to author.
+
+[ext_resource type="Script" path="projectile_pool.gd" id="1_pool"]
+[ext_resource type="Material" path="../materials/tracer.tres" id="2_tracer_mat"]
+
+[node name="ProjectilePool" type="Node3D"]
+script = ExtResource("1_pool")
+tracer_material = ExtResource("2_tracer_mat")
+
+[node name="Tracers" type="MultiMeshInstance3D" parent="."]
+unique_name_in_owner = true

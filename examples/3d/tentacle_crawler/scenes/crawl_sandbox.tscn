@@ -1,0 +1,272 @@
+[gd_scene load_steps=14 format=3]
+
+; STAGE 1 FIRST PLAYABLE. Hand-authored -- scenes/corridor_run.tscn is the
+; generated one, and is deliberately built LAST.
+;
+; This scene exists to answer one question as early as possible: does hauling
+; yourself down a tube by throwing tentacles at it feel good? So it is missing
+; everything that is not that question. No HUD, no course, no bends, no props.
+; A 60 m box, a 12 m pinch, and enough light to see a black creature.
+;
+; If the crawl is not interesting HERE, no amount of corridor generation later
+; will rescue it. Retune in this order: stroke_gain, then body_drag, then
+; brake_multiplier, then fire_interval, and leash_stiffness LAST -- the leash also
+; sets how far the body lags the marker, so it moves two feelings at once.
+;
+; Open it and press F6, or:
+;   godot --path <project root> res://examples/3d/tentacle_crawler/scenes/crawl_sandbox.tscn
+;
+; Every ext_resource path here is RELATIVE. The Godot editor rewrites them to
+; absolute res:// paths on re-save, which breaks self-containment silently --
+; verify_tentacle_crawler_static check `[paths]` greps for that.
+
+[ext_resource type="Material" path="../materials/corridor_wall.tres" id="1_wall"]
+[ext_resource type="Material" path="../materials/corridor_floor.tres" id="2_floor"]
+[ext_resource type="PackedScene" path="../components/marker_pilot/marker_pilot.tscn" id="3_pilot"]
+[ext_resource type="PackedScene" path="../components/camera/crawler_camera_director.tscn" id="4_camera"]
+[ext_resource type="PackedScene" path="../actors/crawler/crawler.tscn" id="5_crawler"]
+
+; A FLAT COLOUR BACKGROUND (mode 1), not a procedural sky.
+;
+; A ProceduralSkyMaterial draws a sun disk and scattering halo for every
+; DirectionalLight3D in the scene, so a sun plus a fill light paints two gradients
+; and a visible diagonal seam. Inside a sealed tube you would never see the sky at
+; all -- until the moment the generator emits a corridor with a hole in it, at
+; which point a flat dark field is a far better "you are outside the level now"
+; signal than a pretty gradient.
+;
+; Ambient is a COLOUR (source 2), not the sky (source 3), and its energy is doing
+; real work here rather than being a rounding error -- see the lights below.
+;
+; No sdfgi_*, ssao_*, ssil_*, ssr_* or volumetric_fog_* anywhere: all of them are
+; unsupported on the GL Compatibility renderer this project targets.
+[sub_resource type="Environment" id="Environment_tube"]
+background_mode = 1
+background_color = Color(0.02, 0.021, 0.026, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.46, 0.48, 0.55, 1)
+ambient_light_energy = 0.34
+tonemap_mode = 2
+
+[sub_resource type="BoxMesh" id="BoxMesh_side"]
+size = Vector3(1, 8, 60)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_side"]
+size = Vector3(1, 8, 60)
+
+[sub_resource type="BoxMesh" id="BoxMesh_deck"]
+size = Vector3(11, 1, 60)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_deck"]
+size = Vector3(11, 1, 60)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cap"]
+size = Vector3(11, 10, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cap"]
+size = Vector3(11, 10, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_pinch"]
+size = Vector3(1.5, 8, 12)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_pinch"]
+size = Vector3(1.5, 8, 12)
+
+[node name="CrawlSandbox" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_tube")
+
+; BOTH LIGHTS HAVE SHADOWS OFF, AND THAT IS NOT AN OVERSIGHT.
+;
+; This corridor is a SEALED TUBE -- four walls and two end caps. A DirectionalLight3D
+; comes from outside it, so with `shadow_enabled = true` the shell occludes the
+; light completely and the entire interior renders at ambient only: a uniform flat
+; grey with no form on anything, and a black creature that is genuinely invisible.
+; It looks exactly like a broken material.
+;
+; With shadows off, a directional light lights every surface whose normal faces it
+; regardless of what is in the way, which is precisely what an interior wants. The
+; sun and the fill point roughly opposite each other so that all four walls get one
+; of them. Measured irradiance (normal . -travel, times energy, before ambient):
+;
+;     surface              sun    fill
+;     left wall  (+X)     0.81    0
+;     right wall (-X)     0       0.59
+;     floor      (+Y)     0.46    0
+;     ceiling    (-Y)     0       0.39
+;
+; Both lights are mostly HORIZONTAL, which is not the obvious choice for something
+; called a sun. It is deliberate: the walls are what the creature is silhouetted
+; against, so the walls get the light, and the floor and ceiling get the spill. An
+; overhead sun lights the floor to 0.9 and leaves both walls near ambient, which is
+; the exact opposite of what a black creature in a grey tube needs.
+;
+; The left/right asymmetry is also deliberate -- two identically lit walls make roll
+; unreadable, and this creature rolls constantly.
+;
+; NOTE ON THE TRANSFORM LITERAL: the three triples are the basis ROWS, so the local
+; axes are the COLUMNS. A DirectionalLight3D emits along its local -Z, which is the
+; negated third column -- components 3, 6 and 9 -- NOT components 7, 8 and 9. Read
+; it as columns and you will build a light pointing somewhere else entirely and
+; write a comment describing the direction you meant rather than the one you got.
+;
+; Nothing in this scene casts a useful shadow anyway. The one object that moves is
+; the creature, and it spends its life in the middle of an empty tube.
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.4008, -0.4197, 0.8144, 0, 0.8889, 0.4581, -0.9161, -0.1836, 0.3563, 0, 0, 0)
+light_energy = 1.0
+shadow_enabled = false
+
+[node name="Fill" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.3714, -0.4887, -0.7895, 0, 0.8503, -0.5263, 0.9285, 0.1955, 0.3158, 0, 0, 0)
+light_energy = 0.75
+shadow_enabled = false
+
+; The tube. Interior is x -4.5..4.5 (9 m wide), y -4..4 (8 m tall), z 0..-60, so
+; the creature travels toward -Z -- Godot's Vector3.FORWARD, which is what every
+; direction in this example is measured against.
+;
+; Six solid slabs, NOT one big box with flip_faces. An inside-out box is invisible
+; under GL Compatibility's backface culling, and its collision shape has the same
+; problem from the other side. Slabs have real thickness and real outward faces, so
+; both the renderer and the raycasts see what you would expect.
+;
+; Every body is layer 1 (CrawlerLayers.CORRIDOR) with collision_mask = 0. Nothing
+; here moves, so nothing here needs to detect anything; a mask would cost broadphase
+; work for a query that is never asked.
+[node name="Corridor" type="Node3D" parent="."]
+
+[node name="WallLeft" type="StaticBody3D" parent="Corridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -30)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Corridor/WallLeft"]
+mesh = SubResource("BoxMesh_side")
+material_override = ExtResource("1_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Corridor/WallLeft"]
+shape = SubResource("BoxShape3D_side")
+
+[node name="WallRight" type="StaticBody3D" parent="Corridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -30)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Corridor/WallRight"]
+mesh = SubResource("BoxMesh_side")
+material_override = ExtResource("1_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Corridor/WallRight"]
+shape = SubResource("BoxShape3D_side")
+
+[node name="Floor" type="StaticBody3D" parent="Corridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -4.5, -30)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Corridor/Floor"]
+mesh = SubResource("BoxMesh_deck")
+material_override = ExtResource("2_floor")
+
+[node name="Collision" type="CollisionShape3D" parent="Corridor/Floor"]
+shape = SubResource("BoxShape3D_deck")
+
+[node name="Ceiling" type="StaticBody3D" parent="Corridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, -30)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Corridor/Ceiling"]
+mesh = SubResource("BoxMesh_deck")
+material_override = ExtResource("2_floor")
+
+[node name="Collision" type="CollisionShape3D" parent="Corridor/Ceiling"]
+shape = SubResource("BoxShape3D_deck")
+
+[node name="CapNear" type="StaticBody3D" parent="Corridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.5)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Corridor/CapNear"]
+mesh = SubResource("BoxMesh_cap")
+material_override = ExtResource("1_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Corridor/CapNear"]
+shape = SubResource("BoxShape3D_cap")
+
+[node name="CapFar" type="StaticBody3D" parent="Corridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -60.5)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Corridor/CapFar"]
+mesh = SubResource("BoxMesh_cap")
+material_override = ExtResource("1_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Corridor/CapFar"]
+shape = SubResource("BoxShape3D_cap")
+
+; The pinch: 12 m of 6 m width, halfway down. It matches the generated run's NARROW
+; section on purpose, so a centering bug found here is the same bug found there.
+;
+; It is also the only place in this scene where the two walls are close enough that
+; a tentacle can reach BOTH -- which is the case that exposes strokes cancelling
+; each other out if the maxf(along, 0.0) gate in CrawlerBody ever goes missing.
+[node name="PinchLeft" type="StaticBody3D" parent="Corridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.75, 0, -36)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Corridor/PinchLeft"]
+mesh = SubResource("BoxMesh_pinch")
+material_override = ExtResource("1_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Corridor/PinchLeft"]
+shape = SubResource("BoxShape3D_pinch")
+
+[node name="PinchRight" type="StaticBody3D" parent="Corridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.75, 0, -36)
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mesh" type="MeshInstance3D" parent="Corridor/PinchRight"]
+mesh = SubResource("BoxMesh_pinch")
+material_override = ExtResource("1_wall")
+
+[node name="Collision" type="CollisionShape3D" parent="Corridor/PinchRight"]
+shape = SubResource("BoxShape3D_pinch")
+
+; EVERY node below that points at another node carries node_paths=. That is not
+; decoration. Without it Godot assigns the NodePath to the Node-typed property,
+; fails to resolve it because the target is not in the tree yet, and leaves the
+; property NULL with no error anywhere -- so the camera silently follows nothing and
+; the pilot silently loses its V key. `[wiring]` in the static suite exists purely
+; to catch this, because nothing else will.
+
+; The player's intent. Spawned 12 m into the tube, on the axis, facing -Z.
+;
+; TWELVE metres, not two. The creature spawns a leash-length behind this, and the
+; chase camera hangs 5.5 m behind THAT -- so a spawn near the mouth puts the camera
+; outside the near end cap, the SpringArm3D correctly refuses to go through it, and
+; the camera ends up jammed two metres off the creature's back with the blob filling
+; half the frame. The arm was doing its job; the spawn point was wrong.
+[node name="MarkerPilot" parent="." node_paths=PackedStringArray("camera") instance=ExtResource("3_pilot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12)
+camera = NodePath("../CameraDirector")
+
+; The creature. Spawned BEHIND the marker by roughly the leash slack, so it starts
+; in the configuration it spends its life in rather than snapping backwards on the
+; first tick.
+[node name="Crawler" parent="." node_paths=PackedStringArray("target_marker") instance=ExtResource("5_crawler")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
+target_marker = NodePath("../MarkerPilot")
+
+; Both camera rigs. A SIBLING of the creature and of the marker, never a child of
+; either -- a camera parented to the thing it follows inherits its rotation, and
+; this creature writhes continuously.
+[node name="CameraDirector" parent="." node_paths=PackedStringArray("target", "marker") instance=ExtResource("4_camera")]
+target = NodePath("../Crawler")
+marker = NodePath("../MarkerPilot")

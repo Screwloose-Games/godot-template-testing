@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+; The tether's visual. It builds its own ImmediateMesh and its own unlit material
+; in _ready(), so there is nothing to author here -- the node exists so the line
+; can be instanced and wired like any other component.
+;
+; top_level is set in code rather than here: the ribbon is built in world space
+; every frame, so any transform on this node would be applied twice.
+
+[ext_resource type="Script" path="tether_line.gd" id="1_line"]
+
+[node name="TetherLine" type="MeshInstance3D"]
+script = ExtResource("1_line")

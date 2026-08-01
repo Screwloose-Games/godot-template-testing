@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+; Wrapper for measure_tether_response.gd.
+;
+; It has to be a scene rather than a `--script` run: a node added during
+; SceneTree._initialize() never receives _ready(), and this harness needs both
+; _ready() and real physics frames. Running the .gd directly reports nothing and
+; exits 0, which looks exactly like a pass.
+
+[ext_resource type="Script" path="measure_tether_response.gd" id="1_measure"]
+
+[node name="MeasureTetherResponse" type="Node"]
+script = ExtResource("1_measure")

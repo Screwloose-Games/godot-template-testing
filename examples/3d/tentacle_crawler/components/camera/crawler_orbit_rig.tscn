@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3]
+
+; The inspection camera: a classic yaw/pitch/arm chain.
+;
+; The chain is anchored to world up, which the chase rig cannot tolerate (the
+; creature crawls on ceilings) and which this rig REQUIRES -- an orbit camera whose
+; up drifts with its subject is unusable for looking at a specific tentacle.
+;
+; Every node is uniquely named because the script drives all three, and the arm
+; masks the corridor shell only so it never catches on a rib mid-inspection.
+
+[ext_resource type="Script" path="crawler_orbit_rig.gd" id="1_rig"]
+
+[node name="CrawlerOrbitRig" type="Node3D"]
+script = ExtResource("1_rig")
+
+[node name="Yaw" type="Node3D" parent="."]
+unique_name_in_owner = true
+
+[node name="Pitch" type="Node3D" parent="Yaw"]
+unique_name_in_owner = true
+
+[node name="SpringArm" type="SpringArm3D" parent="Yaw/Pitch"]
+unique_name_in_owner = true
+collision_mask = 1
+spring_length = 7.0
+margin = 0.3
+
+[node name="Camera" type="Camera3D" parent="Yaw/Pitch/SpringArm"]
+unique_name_in_owner = true
+fov = 65.0
+far = 400.0

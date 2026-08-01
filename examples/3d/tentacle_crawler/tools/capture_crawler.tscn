@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+; Wrapper for capture_crawler.gd. Run this WITHOUT --headless: the headless driver
+; renders nothing, so every capture comes back blank and looks exactly like a bug
+; in the thing you were trying to photograph.
+;
+; It is a .tscn rather than a bare --script for the usual reason: a node added
+; during SceneTree._initialize() never receives _ready(), so the script would run
+; nothing, print nothing and exit 0 -- which is indistinguishable from a pass.
+
+[ext_resource type="Script" path="capture_crawler.gd" id="1_capture"]
+
+[node name="CaptureCrawler" type="Node"]
+script = ExtResource("1_capture")

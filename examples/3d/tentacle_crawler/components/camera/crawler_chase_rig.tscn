@@ -1,0 +1,34 @@
+[gd_scene load_steps=2 format=3]
+
+; The chase camera. Three nodes, and that is the point.
+;
+; The yaw/pitch Euler chain the orbit rig uses is deliberately absent here: it is
+; anchored to world up and gimbal-locks the moment the creature crawls straight up
+; a wall, which happens constantly. The rig node itself carries the orientation as a
+; slerped Quaternion, so there is no pole to hit.
+;
+; SpringArm3D pushes its children along its own +Z -- i.e. behind the rig -- and
+; masks layer 1 (CrawlerLayers.MASK_CAMERA_ARM, the corridor shell) only. Never the
+; creature, which has no collider at all and so can never be caught by the arm, and
+; never the props, because a rib every 8 m would stutter the camera the whole way
+; down the corridor. The script re-asserts the mask in _ready() so this number and
+; CrawlerLayers cannot drift apart.
+;
+; A short arm in a 6 m corridor gets shortened by the wall constantly. That is
+; correct and is the entire reason a SpringArm3D is here rather than a fixed offset.
+
+[ext_resource type="Script" path="crawler_chase_rig.gd" id="1_rig"]
+
+[node name="CrawlerChaseRig" type="Node3D"]
+script = ExtResource("1_rig")
+
+[node name="SpringArm" type="SpringArm3D" parent="."]
+unique_name_in_owner = true
+collision_mask = 1
+spring_length = 5.5
+margin = 0.3
+
+[node name="Camera" type="Camera3D" parent="SpringArm"]
+unique_name_in_owner = true
+fov = 62.0
+far = 400.0

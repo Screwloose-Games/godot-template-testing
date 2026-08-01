@@ -1,0 +1,20 @@
+; The creature's body. Black, as asked for -- but not 0,0,0.
+;
+; Pure black has no shading gradient at all, so a sphere lit from any angle is a
+; flat disc and every lump on the hull disappears. 0.045 keeps the form readable
+; while still reading as black next to a 0.53 wall.
+;
+; `rim_enabled` is doing most of the work here: it lights the silhouette edge
+; regardless of where the sun is, which is what separates a black creature from a
+; dark background without needing a light rig that follows it around. It is also
+; the cheap alternative to the inverted-hull outline shell -- if the outline ever
+; costs too much, raise `rim` and delete the shell.
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+albedo_color = Color(0.045, 0.042, 0.052, 1)
+metallic = 0.1
+roughness = 0.38
+rim_enabled = true
+rim = 0.6
+rim_tint = 0.35

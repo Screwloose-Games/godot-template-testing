@@ -1,0 +1,52 @@
+[gd_scene load_steps=6 format=3]
+
+; A turret emplacement.
+;
+; On layer TURRET (32) rather than OBSTACLE, and masking nothing: it never
+; queries, but the separate layer lets a line-of-sight ray ignore turrets (so two
+; covering the same gap both fire) while the camera arm still avoids them.
+;
+; %Yaw -> %Pitch -> %Muzzle is the slew chain. The barrel points down -Z like
+; everything else in Godot, and %Muzzle sits at the end of it so shots leave the
+; barrel rather than the turret's centre -- at 240 m range that difference is
+; invisible, but it means the muzzle flash and the first tracer agree.
+
+[ext_resource type="Script" path="turret.gd" id="1_turret"]
+[ext_resource type="Material" path="../materials/turret.tres" id="2_turret_mat"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_base"]
+size = Vector3(3.2, 2, 3.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_barrel"]
+size = Vector3(0.7, 0.7, 4.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_base"]
+size = Vector3(3.2, 2, 3.2)
+
+[node name="TetherTurret" type="StaticBody3D"]
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("1_turret")
+
+[node name="Base" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_base")
+material_override = ExtResource("2_turret_mat")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_base")
+
+[node name="Yaw" type="Node3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+
+[node name="Pitch" type="Node3D" parent="Yaw"]
+unique_name_in_owner = true
+
+[node name="Barrel" type="MeshInstance3D" parent="Yaw/Pitch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2)
+mesh = SubResource("BoxMesh_barrel")
+material_override = ExtResource("2_turret_mat")
+
+[node name="Muzzle" type="Marker3D" parent="Yaw/Pitch"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.4)

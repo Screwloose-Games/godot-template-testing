@@ -1,0 +1,14 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+; The starfield. Unlit, billboarded, no shadows, no depth write -- 400 of these
+; are one MultiMesh and one draw call, and they exist to give the eye something
+; to parallax against. In an empty black volume there is no other cue that 100 m/s
+; is fast.
+
+[resource]
+shading_mode = 0
+albedo_color = Color(0.88, 0.91, 1, 1)
+billboard_mode = 1
+billboard_keep_scale = true
+disable_receive_shadows = true
+no_depth_test = false

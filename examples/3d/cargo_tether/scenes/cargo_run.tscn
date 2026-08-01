@@ -1,0 +1,1719 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="../materials/star.tres" id="1_04wkr"]
+[ext_resource type="Script" path="../threats/asteroid_field.gd" id="2_f3v37"]
+[ext_resource type="Material" path="../materials/asteroid.tres" id="3_um8or"]
+[ext_resource type="PackedScene" path="../threats/turret.tscn" id="4_6ofnk"]
+[ext_resource type="Script" path="../threats/turret.gd" id="5_n1c6s"]
+[ext_resource type="PackedScene" path="../run/delivery_dock.tscn" id="6_xhaca"]
+[ext_resource type="Script" path="../run/delivery_dock.gd" id="7_ovvtl"]
+[ext_resource type="Material" path="../materials/dock.tres" id="8_q0e6b"]
+[ext_resource type="PackedScene" path="../threats/projectile_pool.tscn" id="9_opx1x"]
+[ext_resource type="Script" path="../threats/projectile_pool.gd" id="10_5ilyv"]
+[ext_resource type="Material" path="../materials/tracer.tres" id="11_ev6cs"]
+[ext_resource type="PackedScene" path="../actors/ship/ship.tscn" id="12_pthfw"]
+[ext_resource type="Script" path="../actors/ship/ship_controller.gd" id="13_5pogh"]
+[ext_resource type="PackedScene" path="../actors/cargo/cargo.tscn" id="14_7trak"]
+[ext_resource type="Script" path="../actors/cargo/cargo_body.gd" id="15_b4fc1"]
+[ext_resource type="Script" path="../components/tether/tether_link.gd" id="16_f4ov4"]
+[ext_resource type="PackedScene" path="../components/tether/tether_line.tscn" id="17_ie1tv"]
+[ext_resource type="Script" path="../components/tether/tether_line.gd" id="18_rqx6h"]
+[ext_resource type="PackedScene" path="../components/camera/ship_chase_rig.tscn" id="19_14jr4"]
+[ext_resource type="Script" path="../components/camera/ship_chase_rig.gd" id="20_a7g68"]
+[ext_resource type="Script" path="../run/tether_run.gd" id="21_cf4ps"]
+[ext_resource type="PackedScene" path="../ui/tether_hud.tscn" id="22_mqvlq"]
+[ext_resource type="Script" path="../ui/tether_hud.gd" id="23_koowu"]
+
+[sub_resource type="Environment" id="Environment_6ae2d"]
+background_mode = 1
+background_color = Color(0.016, 0.019, 0.036, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.36, 0.42, 0.55, 1)
+ambient_light_energy = 0.32
+tonemap_mode = 2
+
+[sub_resource type="QuadMesh" id="QuadMesh_fdhg2"]
+size = Vector2(1.2, 1.2)
+
+[sub_resource type="MultiMesh" id="MultiMesh_ygb4k"]
+transform_format = 1
+instance_count = 400
+mesh = SubResource("QuadMesh_fdhg2")
+
+[sub_resource type="SphereMesh" id="SphereMesh_e2oox"]
+radius = 1.0
+height = 2.0
+radial_segments = 8
+rings = 4
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_xdds0"]
+radius = 1.0
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_crate"]
+friction = 0.35
+bounce = 0.25
+
+[node name="CargoRun" type="Node3D" unique_id=546863549]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=940156045]
+environment = SubResource("Environment_6ae2d")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1287734915]
+transform = Transform3D(0.8290376, -0.3741731, 0.4155613, 0, 0.7431448, 0.6691306, -0.5591929, -0.55473447, 0.616095, 0, 0, 0)
+light_energy = 1.1
+shadow_enabled = true
+directional_shadow_mode = 1
+directional_shadow_max_distance = 180.0
+
+[node name="Fill" type="DirectionalLight3D" parent="." unique_id=139265766]
+transform = Transform3D(-0.8660254, -0.23473582, -0.44147384, 0, 0.88294756, -0.46947157, 0.50000006, -0.4065743, -0.764655, 0, 0, 0)
+light_energy = 0.22
+
+[node name="Starfield" type="MultiMeshInstance3D" parent="." unique_id=1184466892]
+material_override = ExtResource("1_04wkr")
+cast_shadow = 0
+extra_cull_margin = 16384.0
+multimesh = SubResource("MultiMesh_ygb4k")
+
+[node name="Asteroids" type="Node3D" parent="." unique_id=912035119]
+script = ExtResource("2_f3v37")
+
+[node name="Asteroid00" type="AnimatableBody3D" parent="Asteroids" unique_id=1370952358]
+transform = Transform3D(2.625448, 3.4640508, 0.56817716, 2.1891863, -1.0611095, -3.6464996, -2.7440727, 2.4677618, -2.365516, -14.409843, 16.663872, -119.5074)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid00" unique_id=1705020232]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid00" unique_id=125015080]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid01" type="AnimatableBody3D" parent="Asteroids" unique_id=1534003078]
+transform = Transform3D(-4.8861303, -6.435488, -0.03288973, 0.18078633, -0.17853692, 8.076281, -6.433033, 4.8829784, 0.25194722, -39.854435, 64.78212, -620.2072)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid01" unique_id=1380908471]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid01" unique_id=1118069072]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid02" type="AnimatableBody3D" parent="Asteroids" unique_id=693426254]
+transform = Transform3D(5.224515, 6.7449718, 2.0532033, 0.13857375, 2.4567418, -8.423245, -7.0491896, 5.047338, 1.356149, 176.8327, -20.227783, -931.25836)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid02" unique_id=1328245269]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid02" unique_id=1867973436]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid03" type="AnimatableBody3D" parent="Asteroids" unique_id=1175768369]
+transform = Transform3D(-7.9549475, 4.053556, 0.06057571, -3.0913882, -5.979069, -5.866023, -2.6226523, -5.2474365, 6.730697, -57.94436, 11.370073, -229.49304)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid03" unique_id=1069538394]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid03" unique_id=1401962284]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid04" type="AnimatableBody3D" parent="Asteroids" unique_id=1191929654]
+transform = Transform3D(-6.7220154, -0.64589024, 1.4593452, 1.4826877, -0.19055721, 6.745197, -0.5903387, 6.875963, 0.3240161, -59.819386, 49.75905, -574.21454)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid04" unique_id=760903650]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid04" unique_id=1542706683]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid05" type="AnimatableBody3D" parent="Asteroids" unique_id=764725850]
+transform = Transform3D(-1.2707489, 6.8246355, 4.843597, 5.560315, 4.34995, -4.670302, -6.2545166, 2.4805582, -5.1360235, -16.73048, -4.630554, -241.02917)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid05" unique_id=1296595529]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid05" unique_id=363045340]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid06" type="AnimatableBody3D" parent="Asteroids" unique_id=342519307]
+transform = Transform3D(2.6239116, -1.3100665, -1.3704602, -1.634859, -0.3785542, -2.768263, 0.9600374, 2.9359446, -0.9684556, 21.754004, 81.24487, -739.1699)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid06" unique_id=1920612216]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid06" unique_id=197879965]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid07" type="AnimatableBody3D" parent="Asteroids" unique_id=2111823745]
+transform = Transform3D(4.6120024, -0.3906126, 8.597273, 2.5432482, 9.380193, -0.93814003, -8.221773, 2.682469, 4.532443, -31.490425, 8.491314, -49.618782)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid07" unique_id=1299312750]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid07" unique_id=1211882846]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid08" type="AnimatableBody3D" parent="Asteroids" unique_id=380457826]
+transform = Transform3D(-1.9474736, -8.200422, 1.9037062, 8.414504, -1.8359802, 0.69927365, -0.2591391, 2.0114493, 8.399441, 66.81615, 67.6615, -596.8892)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid08" unique_id=2017088324]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid08" unique_id=1813690788]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid09" type="AnimatableBody3D" parent="Asteroids" unique_id=2121578429]
+transform = Transform3D(-2.6300054, 0.038359694, -1.9643707, 0.7782065, -2.9934518, -1.1003602, -1.804056, -1.347192, 2.3890598, 43.713936, -46.007652, -1085.8243)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid09" unique_id=180217905]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid09" unique_id=1111372686]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid10" type="AnimatableBody3D" parent="Asteroids" unique_id=1751237735]
+transform = Transform3D(-5.589482, -2.3928416, -4.958278, -5.290751, 0.3805516, 5.7806277, -1.522552, 7.462038, -1.8847667, 29.467411, -52.026146, -988.8785)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid10" unique_id=709010444]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid10" unique_id=2013242082]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid11" type="AnimatableBody3D" parent="Asteroids" unique_id=139760575]
+transform = Transform3D(-2.0596185, -2.0875604, 2.398955, -0.74991244, -2.4587111, -2.783396, 3.0903924, -1.9879014, 0.9233872, -14.943004, 60.786594, 0.47177315)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid11" unique_id=1883497902]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid11" unique_id=299453642]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid12" type="AnimatableBody3D" parent="Asteroids" unique_id=519871758]
+transform = Transform3D(1.1920551, 2.799048, 2.2455623, -3.3669138, 0.05382248, 1.720235, 1.2414145, -2.5417807, 2.5092738, 19.927177, -40.36602, -1259.3442)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid12" unique_id=1625508929]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid12" unique_id=108121886]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid13" type="AnimatableBody3D" parent="Asteroids" unique_id=1437409801]
+transform = Transform3D(-5.6207285, -3.59088, -1.824353, 0.85551417, 1.9962139, -6.5649447, 3.9358325, -5.5620127, -1.1783507, -63.397278, 46.82937, -94.91799)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid13" unique_id=1131488585]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid13" unique_id=1637924736]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid14" type="AnimatableBody3D" parent="Asteroids" unique_id=716844711]
+transform = Transform3D(3.2463477, -4.3153243, -1.5478615, 4.457662, 3.4142585, -0.16959634, 1.0710506, -1.1302605, 5.39741, 69.81412, -9.920475, -156.64333)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid14" unique_id=257242169]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid14" unique_id=340176035]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid15" type="AnimatableBody3D" parent="Asteroids" unique_id=1285627563]
+transform = Transform3D(2.895168, -5.889761, 0.0074096005, -0.071814254, -0.027045136, 6.562427, -5.8893275, -2.8950512, -0.07637948, 17.013712, 56.467857, -282.05893)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid15" unique_id=1021778537]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid15" unique_id=1852469214]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid16" type="AnimatableBody3D" parent="Asteroids" unique_id=1349980813]
+transform = Transform3D(0.5912915, 0.35946473, -3.661879, 2.4272091, -2.8255496, 0.11455939, -2.7653623, -2.4031756, -0.6824343, 4.13616, 42.788174, -693.3585)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid16" unique_id=2089311216]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid16" unique_id=1302400533]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid17" type="AnimatableBody3D" parent="Asteroids" unique_id=1778709037]
+transform = Transform3D(-6.084714, 6.0935545, 1.1781371, 1.3582957, -0.3024362, 8.579436, 6.055943, 6.1903377, -0.7405591, 6.5271893, -62.650726, -1114.0331)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid17" unique_id=199911801]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid17" unique_id=864897264]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid18" type="AnimatableBody3D" parent="Asteroids" unique_id=297817667]
+transform = Transform3D(3.4599059, -3.9079049, -0.6481363, -3.0880775, -2.1218863, -3.691087, 2.4810433, 2.80867, -3.6903312, -17.996777, -64.1392, -333.8157)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid18" unique_id=1581247158]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid18" unique_id=940332929]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid19" type="AnimatableBody3D" parent="Asteroids" unique_id=1213774619]
+transform = Transform3D(-10.207905, 3.2112381, -0.28952807, -2.5661907, -8.67363, -5.7253838, -1.952061, -5.3901114, 9.04065, -4.4775944, 24.868916, -1133.0077)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid19" unique_id=1008220455]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid19" unique_id=927685442]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid20" type="AnimatableBody3D" parent="Asteroids" unique_id=734498180]
+transform = Transform3D(-2.3909364, -5.6134295, 0.8537688, 3.6801457, -0.82659775, 4.8712783, -4.3238916, 2.4004653, 3.6739373, -40.853405, -43.730217, -1326.7958)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid20" unique_id=1377744554]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid20" unique_id=541188503]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid21" type="AnimatableBody3D" parent="Asteroids" unique_id=2147108964]
+transform = Transform3D(1.9377064, 2.4266443, -0.865163, 2.1072564, -2.115691, -1.2145517, -1.482086, 0.16451123, -2.8580015, 70.13913, 43.825665, -98.40848)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid21" unique_id=154753556]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid21" unique_id=1698556531]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid22" type="AnimatableBody3D" parent="Asteroids" unique_id=1089961289]
+transform = Transform3D(-2.9401765, 0.24006931, -5.206844, 5.2080483, 0.37884408, -2.9233894, 0.21234506, -5.967608, -0.3950515, 34.633816, 92.558044, -255.09618)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid22" unique_id=183265818]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid22" unique_id=1592602419]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid23" type="AnimatableBody3D" parent="Asteroids" unique_id=1614437540]
+transform = Transform3D(-6.444899, 1.6655257, 2.25297, 2.0664866, 6.641785, 1.0014493, -1.8919517, 1.5809149, -6.5808663, -10.550972, 41.19455, -115.63352)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid23" unique_id=403901714]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid23" unique_id=2003510623]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid24" type="AnimatableBody3D" parent="Asteroids" unique_id=826213302]
+transform = Transform3D(0.29715624, 9.641355, 0.13970916, 3.1211617, 0.036073152, -9.128011, -9.123243, 0.32637283, -3.1182418, -93.37658, 20.677805, -1243.9023)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid24" unique_id=1555689355]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid24" unique_id=1944455540]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid25" type="AnimatableBody3D" parent="Asteroids" unique_id=1703759266]
+transform = Transform3D(-0.26224238, 8.027321, 0.87410533, -0.0022149107, 0.87449455, -8.031561, -8.074771, -0.26094124, -0.026185047, -7.1186295, -29.8364, -424.4039)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid25" unique_id=2108097857]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid25" unique_id=1342957284]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid26" type="AnimatableBody3D" parent="Asteroids" unique_id=793606819]
+transform = Transform3D(-0.32703963, 3.5169077, 4.765022, -5.327052, 1.91057, -1.7757436, -2.5877767, -4.3774543, 3.0532496, 3.181324, -114.858864, -1154.8291)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid26" unique_id=132804347]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid26" unique_id=1306153709]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid27" type="AnimatableBody3D" parent="Asteroids" unique_id=1721613000]
+transform = Transform3D(-2.8481421, 2.9972486, 2.1664143, -3.121105, -0.4812672, -3.4374192, -1.983823, -3.545934, 2.2977302, 100.63483, 27.383121, -794.4368)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid27" unique_id=950334912]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid27" unique_id=211448570]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid28" type="AnimatableBody3D" parent="Asteroids" unique_id=1372076897]
+transform = Transform3D(-0.82098955, -6.084443, -3.2316527, -6.7330236, 1.3981086, -0.92181003, 1.459595, 3.0270276, -6.0699863, -20.59631, 59.31093, -260.99475)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid28" unique_id=2034221593]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid28" unique_id=2026948697]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid29" type="AnimatableBody3D" parent="Asteroids" unique_id=63179812]
+transform = Transform3D(0.8408415, -3.5698404, 0.18868159, -2.2882712, -0.38856143, 2.8459113, -2.7464843, -0.76917833, -2.313345, -54.402534, -19.263226, -1092.1238)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid29" unique_id=716968029]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid29" unique_id=1994044638]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid30" type="AnimatableBody3D" parent="Asteroids" unique_id=1657430818]
+transform = Transform3D(1.6242542, -0.7156612, -4.5923696, 4.3169217, -1.5703566, 1.7715521, -1.7222704, -4.611078, 0.10943473, -7.765918, 30.117947, -79.91534)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid30" unique_id=201670295]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid30" unique_id=1762994436]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid31" type="AnimatableBody3D" parent="Asteroids" unique_id=425811450]
+transform = Transform3D(0.5394512, 5.86678, 4.789038, 5.348601, -3.694191, 3.9230626, 5.3615727, 3.0949714, -4.395417, -6.2748466, -29.086025, -5.808532)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid31" unique_id=809919430]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid31" unique_id=395960443]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid32" type="AnimatableBody3D" parent="Asteroids" unique_id=1613018]
+transform = Transform3D(6.0640025, 3.3716462, -3.2090108, -2.832467, 6.8550925, 1.8500582, 3.6936266, -0.27854672, 6.687108, -46.246643, 2.2128887, -1142.9269)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid32" unique_id=1979861114]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid32" unique_id=224176224]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid33" type="AnimatableBody3D" parent="Asteroids" unique_id=102090627]
+transform = Transform3D(-9.402158, -1.0771978, 0.6119103, 1.1941051, -9.127564, 2.2797012, 0.33000335, 2.3372142, 9.184981, -32.41406, -87.76709, -1217.424)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid33" unique_id=811782775]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid33" unique_id=789969970]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid34" type="AnimatableBody3D" parent="Asteroids" unique_id=1882859161]
+transform = Transform3D(-6.5528374, 5.6847386, -5.783853, -4.963876, 3.0688345, 8.640086, 6.4132013, 8.183819, 0.7777178, 32.938175, 75.17967, -648.97064)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid34" unique_id=13124396]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid34" unique_id=1738651343]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid35" type="AnimatableBody3D" parent="Asteroids" unique_id=363576948]
+transform = Transform3D(0.7008802, 7.9549274, -6.9975343, 2.4252775, -6.94708, -7.654652, -10.313312, -1.0930676, -2.2756114, -73.63094, 25.10388, -467.60428)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid35" unique_id=739665848]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid35" unique_id=623162319]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid36" type="AnimatableBody3D" parent="Asteroids" unique_id=834328342]
+transform = Transform3D(0.85422623, 4.896397, 7.2364383, -0.37584177, 7.284803, -4.8847556, -8.729232, 0.16550104, 0.91845995, 127.71658, -16.449684, -859.27527)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid36" unique_id=599074124]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid36" unique_id=1793500901]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid37" type="AnimatableBody3D" parent="Asteroids" unique_id=1942820666]
+transform = Transform3D(-3.3680437, -2.8888993, -0.29585168, 1.4143459, -2.0275066, 3.6967318, -2.536315, 2.705635, 2.4543083, 85.03819, 70.62976, -176.39136)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid37" unique_id=749546588]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid37" unique_id=535005646]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid38" type="AnimatableBody3D" parent="Asteroids" unique_id=966604253]
+transform = Transform3D(7.7020354, -2.2799675, -6.388513, -6.776776, -2.1668863, -7.3967977, 0.2943805, 9.769292, -3.1316109, 37.473293, 72.089165, -274.40567)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid38" unique_id=248675595]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid38" unique_id=1016405450]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid39" type="AnimatableBody3D" parent="Asteroids" unique_id=773432458]
+transform = Transform3D(-4.7612333, -9.582299, -0.6505949, 5.7098174, -3.4079576, 8.408143, -7.7228036, 3.3879843, 6.617622, -5.595463, 4.146755, -1032.9089)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid39" unique_id=1800983528]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid39" unique_id=1933774365]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid40" type="AnimatableBody3D" parent="Asteroids" unique_id=287168034]
+transform = Transform3D(5.5233426, 1.3487986, 3.4433503, 0.30238542, 6.0037117, -2.8367655, -3.685713, 2.513845, 4.9274063, 151.27367, 77.483864, -844.40686)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid40" unique_id=1839189397]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid40" unique_id=1663635907]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid41" type="AnimatableBody3D" parent="Asteroids" unique_id=1334424503]
+transform = Transform3D(-5.8278837, -1.6978343, 6.960124, -4.4284244, -6.1990805, -5.2202168, 5.63161, -6.6316633, 3.0977752, 15.106651, 96.05143, -310.67438)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid41" unique_id=1166126744]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid41" unique_id=1890747339]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid42" type="AnimatableBody3D" parent="Asteroids" unique_id=839586689]
+transform = Transform3D(-0.053921673, 4.5140967, 4.2868266, -2.2212133, -4.0187626, 4.203882, 5.8155107, -1.4930967, 1.645405, 1.0252857, 28.63388, -677.9355)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid42" unique_id=1506481539]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid42" unique_id=1726643944]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid43" type="AnimatableBody3D" parent="Asteroids" unique_id=1015779929]
+transform = Transform3D(0.8324444, 1.0774684, 3.4297328, 1.271877, -3.381061, 0.75347537, 3.3624895, 1.0121553, -1.1340972, -51.870934, -22.332626, -1122.7068)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid43" unique_id=2109607199]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid43" unique_id=2093069844]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid44" type="AnimatableBody3D" parent="Asteroids" unique_id=1328728531]
+transform = Transform3D(-0.9940322, -5.125635, 4.137979, 5.2510576, 1.9103209, 3.6276953, -3.9776123, 3.8028467, 3.755005, 29.582523, -7.9459023, -889.4833)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid44" unique_id=718662954]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid44" unique_id=1741653622]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid45" type="AnimatableBody3D" parent="Asteroids" unique_id=2093391459]
+transform = Transform3D(-6.277371, 4.927757, -5.230121, 7.183943, 4.465065, -4.4154835, 0.16710001, -6.8427143, -6.647682, 46.81348, 25.187393, -871.9703)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid45" unique_id=1337768722]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid45" unique_id=786693515]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid46" type="AnimatableBody3D" parent="Asteroids" unique_id=1451845261]
+transform = Transform3D(5.1152053, 2.1500108, 0.551081, 1.5908822, -2.5862265, -4.67676, -1.5476857, 4.4475217, -2.985931, 79.58642, -38.62783, -901.3279)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid46" unique_id=867056346]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid46" unique_id=449995846]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid47" type="AnimatableBody3D" parent="Asteroids" unique_id=1998574625]
+transform = Transform3D(7.2061477, -6.767758, 0.9740827, 5.276768, 4.604576, -7.045108, 4.3482294, 5.62808, 6.9352407, 121.918495, -64.447464, -865.8526)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid47" unique_id=199714895]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid47" unique_id=1880775419]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid48" type="AnimatableBody3D" parent="Asteroids" unique_id=821539189]
+transform = Transform3D(-3.3537076, -0.97119105, 4.7221107, -3.960019, 3.835654, -2.0235853, -2.7495062, -4.3397512, -2.8452888, -7.7344947, -116.50614, -1069.8568)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid48" unique_id=1738969916]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid48" unique_id=1791136373]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid49" type="AnimatableBody3D" parent="Asteroids" unique_id=322753026]
+transform = Transform3D(-0.28974554, 0.547141, -3.254457, 3.217471, 0.7734463, -0.15642047, 0.73398507, -3.1744645, -0.5990396, 58.19061, 23.479338, -44.786736)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid49" unique_id=438729916]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid49" unique_id=258166949]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid50" type="AnimatableBody3D" parent="Asteroids" unique_id=16451010]
+transform = Transform3D(3.3928246, -1.5919645, 1.8878803, -1.9258038, -3.713834, 0.32927042, 1.5458728, -1.1326027, -3.7332547, -27.480507, 75.981384, -217.75136)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid50" unique_id=373246246]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid50" unique_id=215965532]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid51" type="AnimatableBody3D" parent="Asteroids" unique_id=1217593589]
+transform = Transform3D(4.758877, -3.9135787, 2.760011, -1.2235585, -4.7555137, -4.6334286, 4.629975, 2.7658014, -4.061323, -40.625298, -20.400087, -337.96915)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid51" unique_id=1608051872]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid51" unique_id=314828301]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid52" type="AnimatableBody3D" parent="Asteroids" unique_id=954212813]
+transform = Transform3D(4.44545, 0.9855227, -0.016233277, 0.09284218, -0.49333358, -4.525654, -0.981274, 4.418021, -0.5017312, 25.917639, -31.312412, -685.4482)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid52" unique_id=1018172995]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid52" unique_id=1141794944]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid53" type="AnimatableBody3D" parent="Asteroids" unique_id=1494289170]
+transform = Transform3D(5.6169405, -1.9794984, -0.6874886, -0.8399884, -0.32502678, -5.9270444, 1.9197586, 5.649515, -0.58187836, 29.736095, 94.34215, -639.3269)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid53" unique_id=490064959]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid53" unique_id=1081227571]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid54" type="AnimatableBody3D" parent="Asteroids" unique_id=688905382]
+transform = Transform3D(6.727078, -1.9807103, -1.5484629, 1.7204084, 0.40120354, 6.960873, -1.8333428, -6.891324, 0.8503131, -47.74816, 36.737633, -227.2246)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid54" unique_id=377265170]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid54" unique_id=210366781]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid55" type="AnimatableBody3D" parent="Asteroids" unique_id=398448778]
+transform = Transform3D(-4.7208047, 1.4103985, 6.891449, -6.5351634, 2.1912107, -4.9251924, -2.602485, -8.06081, -0.13304447, 24.811264, -60.1338, -187.16344)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid55" unique_id=343590356]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid55" unique_id=346397278]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid56" type="AnimatableBody3D" parent="Asteroids" unique_id=1765770246]
+transform = Transform3D(5.3392816, -1.8736593, -0.8603799, -0.46876737, 1.222695, -5.5717187, 2.0077622, 5.2681303, 0.98715365, -22.472332, -21.787495, -62.151115)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid56" unique_id=482943128]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid56" unique_id=246130984]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid57" type="AnimatableBody3D" parent="Asteroids" unique_id=301266296]
+transform = Transform3D(2.128251, -1.0930678, 4.230744, -4.197161, -1.8205556, 1.6409931, 1.21566, -4.371982, -1.741089, -34.14298, 47.706894, -215.3228)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid57" unique_id=992965342]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid57" unique_id=352728194]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid58" type="AnimatableBody3D" parent="Asteroids" unique_id=1183082840]
+transform = Transform3D(10.752038, -1.4820486, 1.40809, 1.187862, -1.6060565, -10.760812, 1.663782, 10.724254, -1.416939, 86.01109, -17.158672, -29.292473)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid58" unique_id=1719429012]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid58" unique_id=1117704243]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid59" type="AnimatableBody3D" parent="Asteroids" unique_id=868915795]
+transform = Transform3D(4.4381704, 6.2280173, -1.4355738, -1.350999, 2.6224246, 7.200286, 6.246909, -3.8576055, 2.5770986, 25.84433, -0.6708517, -892.3888)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid59" unique_id=1872711358]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid59" unique_id=1399571009]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid60" type="AnimatableBody3D" parent="Asteroids" unique_id=1722635362]
+transform = Transform3D(2.3113618, 1.0353788, -2.6284635, -0.62253726, 3.499306, 0.83097917, 2.7555902, -0.077909365, 2.3924623, -95.89045, -77.99191, -1131.1306)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid60" unique_id=1224635676]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid60" unique_id=714005834]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid61" type="AnimatableBody3D" parent="Asteroids" unique_id=1750099836]
+transform = Transform3D(3.2605846, 6.589505, 0.45439738, 6.1014624, -2.8107147, -3.0218382, -2.5298638, 1.713993, -6.7023487, -37.54203, -87.164185, -1136.0648)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid61" unique_id=328105561]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid61" unique_id=2110398064]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid62" type="AnimatableBody3D" parent="Asteroids" unique_id=1931094936]
+transform = Transform3D(0.5764732, -2.3523183, 5.4732447, 0.91835433, 5.4681706, 2.2534115, -5.8861217, 0.62276477, 0.8876147, -19.993347, 38.191254, -181.36848)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid62" unique_id=1427772904]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid62" unique_id=1603319097]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid63" type="AnimatableBody3D" parent="Asteroids" unique_id=415737926]
+transform = Transform3D(-1.5213363, -3.6810148, 0.15799025, 0.65007555, -0.099930234, 3.9315023, -3.6266005, 1.5262501, 0.6384539, 59.781845, 58.70517, -620.8326)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid63" unique_id=415365552]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid63" unique_id=1117593358]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid64" type="AnimatableBody3D" parent="Asteroids" unique_id=63029372]
+transform = Transform3D(0.5353159, 3.516131, 3.7150645, 2.0167887, 3.2876759, -3.4022338, -4.7007923, 1.8109266, -1.0366029, -49.22961, 6.5544457, -13.630646)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid64" unique_id=731699891]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid64" unique_id=394560352]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid65" type="AnimatableBody3D" parent="Asteroids" unique_id=2037655441]
+transform = Transform3D(1.2896467, -3.0049794, 0.28032666, -0.85667306, -0.6567951, -3.0994198, 2.8938892, 1.1447235, -1.0424421, -20.533186, -27.705341, -685.6363)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid65" unique_id=326190238]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid65" unique_id=1809058076]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid66" type="AnimatableBody3D" parent="Asteroids" unique_id=472818969]
+transform = Transform3D(-1.2098433, -4.2301154, 3.6676002, -2.030311, -3.1653428, -4.3205705, 5.2175665, -2.2126038, -0.83082426, 50.474747, -1.5052738, -223.19136)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid66" unique_id=765275003]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid66" unique_id=1214403684]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid67" type="AnimatableBody3D" parent="Asteroids" unique_id=2080738791]
+transform = Transform3D(-2.6313078, 2.0695431, 2.9844663, -2.634492, -3.6244926, 0.19061522, 2.4998999, -1.6413021, 3.3422232, -70.68169, -4.0490055, -1209.2296)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid67" unique_id=275344778]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid67" unique_id=732678748]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid68" type="AnimatableBody3D" parent="Asteroids" unique_id=1431895273]
+transform = Transform3D(-2.8096313, 3.522829, -4.2794585, -0.68810683, -4.9823923, -3.6497116, -5.5000544, -1.1762488, 2.6427178, 37.85447, 48.90617, -386.25714)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid68" unique_id=1388584008]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid68" unique_id=1802962291]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid69" type="AnimatableBody3D" parent="Asteroids" unique_id=1826462655]
+transform = Transform3D(6.0413103, -5.1515813, -1.4553736, -4.3373804, -3.4243464, -5.883478, 3.1375206, 5.185498, -5.3311257, -72.25817, 3.5113487, -1087.7584)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid69" unique_id=986801345]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid69" unique_id=2083375548]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid70" type="AnimatableBody3D" parent="Asteroids" unique_id=1112367464]
+transform = Transform3D(5.9797196, 4.834494, -0.0067728003, 2.6123312, -3.222086, 6.474822, 4.0679364, -5.037386, -4.1480193, -12.939919, -26.4807, -60.882595)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid70" unique_id=1002813402]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid70" unique_id=890200580]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid71" type="AnimatableBody3D" parent="Asteroids" unique_id=190020002]
+transform = Transform3D(-3.7478142, 1.8430989, 1.1388279, 0.9683294, -0.6105732, 4.1748757, 1.9381125, 3.8691392, 0.11632952, 131.0623, -13.592856, -817.18695)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid71" unique_id=1136407535]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid71" unique_id=742590011]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid72" type="AnimatableBody3D" parent="Asteroids" unique_id=1732099764]
+transform = Transform3D(7.835507, 7.313528, -1.4117582, 3.5868998, -1.9090389, 10.018266, 6.5280085, -7.7294116, -3.8101468, -48.45868, 24.842995, -49.54337)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid72" unique_id=425376733]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid72" unique_id=1166182197]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid73" type="AnimatableBody3D" parent="Asteroids" unique_id=397830866]
+transform = Transform3D(-1.6425416, 5.7961044, 0.5645243, -0.33138415, 0.4925716, -6.021546, -5.8140945, -1.6655341, 0.18372424, -34.105103, 50.783028, -1108.7562)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid73" unique_id=336344804]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid73" unique_id=1421996384]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid74" type="AnimatableBody3D" parent="Asteroids" unique_id=251325352]
+transform = Transform3D(-2.778861, 3.7611277, -2.503312, 2.76233, 3.739987, 2.5527928, 3.5752182, 0.0337242, -3.918086, -58.074844, 53.830173, -454.18768)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid74" unique_id=2134521500]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid74" unique_id=349469771]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid75" type="AnimatableBody3D" parent="Asteroids" unique_id=68915596]
+transform = Transform3D(2.1414545, 3.6125643, 2.6605957, -3.918118, 0.06952508, 3.0592048, 2.1858046, -3.4146395, 2.8771017, -41.853657, -25.384308, -1241.7267)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid75" unique_id=1416964619]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid75" unique_id=1794896961]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid76" type="AnimatableBody3D" parent="Asteroids" unique_id=894531291]
+transform = Transform3D(-2.405107, -3.6808317, 0.6389795, 0.61870843, 0.35700485, 4.3853283, -3.6842933, 2.4628, 0.31930828, -5.3182945, -4.4044266, -1140.9739)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid76" unique_id=54729363]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid76" unique_id=1170581451]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid77" type="AnimatableBody3D" parent="Asteroids" unique_id=1219047291]
+transform = Transform3D(1.269518, 2.8906841, 0.7981466, 0.5947471, -1.0921998, 3.009675, 2.9392803, -1.027528, -0.9537223, 103.7979, -23.845985, -977.5511)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid77" unique_id=1646465627]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid77" unique_id=1026140740]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid78" type="AnimatableBody3D" parent="Asteroids" unique_id=31414688]
+transform = Transform3D(-2.2503862, 5.0364995, -1.6284397, -2.0460343, -2.4596357, -4.779783, -4.8817916, -1.2908316, 2.7539515, -24.578163, 33.11911, -680.75104)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid78" unique_id=822978179]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid78" unique_id=1718013354]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid79" type="AnimatableBody3D" parent="Asteroids" unique_id=375444785]
+transform = Transform3D(-1.4629853, 3.1458435, 0.8548759, -3.2501268, -1.4801526, -0.115291335, 0.25262192, -0.8247952, 3.4674723, 111.64693, 76.34363, -683.5215)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid79" unique_id=1624802732]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid79" unique_id=1532225362]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid80" type="AnimatableBody3D" parent="Asteroids" unique_id=2114574274]
+transform = Transform3D(9.198354, 0.52252924, -3.00237, 1.3753687, 7.807231, 5.572476, 2.7194898, -5.7158628, 7.336911, 9.219109, 39.4701, -943.3989)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid80" unique_id=1114937408]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid80" unique_id=862282972]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid81" type="AnimatableBody3D" parent="Asteroids" unique_id=1407578337]
+transform = Transform3D(3.7406735, 5.791982, 2.6383176, 5.479787, -4.4874597, 2.0820808, 3.2372386, 0.90336436, -6.573024, 10.617512, -21.260366, -421.96005)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid81" unique_id=401002014]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid81" unique_id=778847342]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid82" type="AnimatableBody3D" parent="Asteroids" unique_id=1126666252]
+transform = Transform3D(-4.3283095, 2.668645, 0.42129883, -1.3592731, -1.4634026, -4.69513, -2.334852, -4.0951443, 1.952352, -32.322384, 37.53893, -1288.6083)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid82" unique_id=1351475655]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid82" unique_id=1554038132]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid83" type="AnimatableBody3D" parent="Asteroids" unique_id=1645174157]
+transform = Transform3D(3.7354007, -6.036982, -6.016599, -6.3054004, 2.462537, -6.385583, 5.7346787, 6.639924, -3.1020482, 30.321693, 12.498325, -788.68774)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid83" unique_id=291980522]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid83" unique_id=976727495]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid84" type="AnimatableBody3D" parent="Asteroids" unique_id=495907041]
+transform = Transform3D(-3.2511384, 4.9214287, -2.5915527, -0.9972354, 2.437394, 5.879722, 5.4719396, 3.3682573, -0.46821222, 28.094177, -1.9760008, -1219.294)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid84" unique_id=2075097477]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid84" unique_id=1085760300]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid85" type="AnimatableBody3D" parent="Asteroids" unique_id=191115896]
+transform = Transform3D(-3.195258, 3.8602393, -2.7821918, -4.67904, -1.9395788, 2.6825976, 0.8652301, 3.7667358, 4.2325864, 108.3911, 50.33284, -129.76894)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid85" unique_id=2054173566]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid85" unique_id=1808615319]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid86" type="AnimatableBody3D" parent="Asteroids" unique_id=1008304724]
+transform = Transform3D(1.8268268, -3.4344974, 1.2012498, 0.6371051, -1.021449, -3.88932, 3.5822997, 1.9331166, 0.079119585, 119.46344, -38.66739, -747.0103)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid86" unique_id=1928210139]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid86" unique_id=2104741674]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid87" type="AnimatableBody3D" parent="Asteroids" unique_id=1578100002]
+transform = Transform3D(-8.193089, 5.6398244, -2.0845854, -1.6030512, 1.3469398, 9.944636, 5.7951136, 8.346134, -0.19627436, 68.99051, 62.85437, -948.08673)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid87" unique_id=21533314]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid87" unique_id=914476438]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid88" type="AnimatableBody3D" parent="Asteroids" unique_id=530693467]
+transform = Transform3D(-9.233705, -1.228309, -0.82099676, -0.5927963, -1.6795576, 9.179965, -1.3532816, 9.116711, 1.5805964, -29.691034, 20.309162, -1300.8646)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid88" unique_id=1616734792]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid88" unique_id=1663274061]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid89" type="AnimatableBody3D" parent="Asteroids" unique_id=942863674]
+transform = Transform3D(-3.3596632, -4.0153203, -8.637186, 7.825653, 4.057449, -4.930253, 5.42982, -8.332192, 1.76146, 101.50967, 99.19349, -792.04596)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid89" unique_id=1247351758]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid89" unique_id=977671205]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid90" type="AnimatableBody3D" parent="Asteroids" unique_id=2069415530]
+transform = Transform3D(-6.611715, -0.72344446, -3.308744, -0.9073876, -6.613619, 3.2592351, -3.2630978, 3.3049347, 5.79789, -46.46004, 14.144442, -380.2991)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid90" unique_id=1327898523]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid90" unique_id=903481126]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid91" type="AnimatableBody3D" parent="Asteroids" unique_id=1770755162]
+transform = Transform3D(-6.253444, 3.8769395, 0.990903, -0.7836766, 0.6162873, -7.3569117, -3.9240792, -6.3013997, -0.10986444, -35.293385, 16.848928, -386.37427)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid91" unique_id=186336674]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid91" unique_id=1396607869]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid92" type="AnimatableBody3D" parent="Asteroids" unique_id=2111537423]
+transform = Transform3D(3.1178486, -5.5058174, 0.23222624, -4.993292, -2.7097154, 2.7952485, -2.3313067, -1.5596, -5.6764064, -24.577698, 10.860188, -390.6433)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid92" unique_id=1075067045]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid92" unique_id=1198777619]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid93" type="AnimatableBody3D" parent="Asteroids" unique_id=1544387972]
+transform = Transform3D(-4.4788203, -4.5994654, 2.0907981, 2.8820834, -4.6207314, -3.9910886, 4.1497126, -1.7550242, 5.0285316, -19.326962, -1.0195904, -391.10873)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid93" unique_id=1085760292]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid93" unique_id=746375137]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid94" type="AnimatableBody3D" parent="Asteroids" unique_id=264998386]
+transform = Transform3D(-4.285638, 4.7885947, 1.1282873, -2.170411, -0.49741998, -6.1328826, -4.4150863, -4.4036684, 1.919656, -21.998058, -13.23172, -387.55273)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid94" unique_id=1176184512]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid94" unique_id=150601994]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid95" type="AnimatableBody3D" parent="Asteroids" unique_id=1399749214]
+transform = Transform3D(6.043686, -1.408463, 2.6999335, -2.965189, -1.3552147, 5.93048, -0.6935867, -6.4791336, -1.8273786, -31.34115, -20.062012, -381.63922)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid95" unique_id=1211563702]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid95" unique_id=1130003298]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid96" type="AnimatableBody3D" parent="Asteroids" unique_id=286536302]
+transform = Transform3D(-5.1846166, 4.4910107, 0.86826444, -0.28058225, 0.99768996, -6.8358755, -4.565559, -5.1612735, -0.5658875, -42.9845, -18.314493, -376.1352)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid96" unique_id=2048530084]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid96" unique_id=167971653]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid97" type="AnimatableBody3D" parent="Asteroids" unique_id=252806958]
+transform = Transform3D(3.8539953, 5.2132072, -1.0293607, -2.8196268, 0.92844594, -5.854749, -4.504089, 3.8795424, 2.7843716, -51.480057, -8.806853, -373.61603)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid97" unique_id=324653628]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid97" unique_id=1449668815]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid98" type="AnimatableBody3D" parent="Asteroids" unique_id=1121852371]
+transform = Transform3D(-1.68818, 3.8879824, 4.9091253, -3.5159824, 3.6188834, -4.0752196, -5.182064, -3.7219818, 1.1657355, -52.852654, 4.012182, -375.26047)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid98" unique_id=796450193]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid98" unique_id=1016376261]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid99" type="AnimatableBody3D" parent="Asteroids" unique_id=734646070]
+transform = Transform3D(6.0293107, 3.1496146, -0.8209584, 2.5270572, -3.4406102, 5.359367, 2.0513475, -5.018841, -4.1892533, 45.30934, 17.18686, -731.4603)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid99" unique_id=847253839]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid99" unique_id=1440149876]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid100" type="AnimatableBody3D" parent="Asteroids" unique_id=1703793454]
+transform = Transform3D(-3.0232682, 5.535124, -0.027450975, -0.5877688, -0.35213158, -6.269691, -5.5038967, -3.0028167, 0.68462783, 34.652985, 22.752743, -736.3978)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid100" unique_id=274026393]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid100" unique_id=1917773151]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid101" type="AnimatableBody3D" parent="Asteroids" unique_id=1215354516]
+transform = Transform3D(1.3202635, -6.4238987, 0.12544793, -0.0021775072, -0.12851633, -6.558109, 6.4251237, 1.3199683, -0.028000187, 30.359657, 34.420223, -740.1864)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid101" unique_id=321019869]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid101" unique_id=1692619257]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid102" type="AnimatableBody3D" parent="Asteroids" unique_id=491894727]
+transform = Transform3D(-5.926134, -0.770231, 4.800931, 2.4382164, 6.077687, 3.9847314, -4.2068152, 4.6075726, -4.453565, 34.438255, 46.72995, -741.05334)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid102" unique_id=176647288]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid102" unique_id=16765857]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid103" type="AnimatableBody3D" parent="Asteroids" unique_id=436414799]
+transform = Transform3D(-2.9973829, -1.3246608, -6.62917, -0.9454047, 7.262444, -1.0237381, 6.69379, 0.4325553, -3.1130354, 44.98036, 53.92207, -738.59296)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid103" unique_id=1080715000]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid103" unique_id=1298882393]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid104" type="AnimatableBody3D" parent="Asteroids" unique_id=365659019]
+transform = Transform3D(0.2600661, 0.50844026, 6.8579426, 0.58398336, 6.836421, -0.52899045, -6.851923, 0.6019601, 0.21520917, 57.053196, 52.63131, -733.95654)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid104" unique_id=442297702]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid104" unique_id=524533843]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid105" type="AnimatableBody3D" parent="Asteroids" unique_id=1966725585]
+transform = Transform3D(0.6091113, 5.245067, -5.204215, -6.0741076, -2.617825, -3.3493, -4.207113, 4.5389276, 4.0821486, 65.00776, 43.461628, -729.3135)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid105" unique_id=739917791]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid105" unique_id=1140739965]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid106" type="AnimatableBody3D" parent="Asteroids" unique_id=1025637726]
+transform = Transform3D(-5.61282, -0.76436293, -4.370999, 3.0581832, 4.440479, -4.7035403, 3.215182, -5.5580144, -3.1566923, 65.12202, 30.703625, -726.83636)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid106" unique_id=942488376]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid106" unique_id=719618147]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid107" type="AnimatableBody3D" parent="Asteroids" unique_id=402826728]
+transform = Transform3D(1.417559, -4.9480424, -4.122354, 5.703561, 2.9248948, -1.5494474, 2.9910407, -3.2323775, 4.908341, 57.342503, 20.326906, -727.6842)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid107" unique_id=700940553]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid107" unique_id=653498491]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid108" type="AnimatableBody3D" parent="Asteroids" unique_id=2058854413]
+transform = Transform3D(4.796674, -5.486891, 0.971244, 2.3503492, 0.83031374, -6.916921, 5.052241, 4.8230667, 2.295702, 5.4246626, -32.645763, -1088.2455)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid108" unique_id=157544947]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid108" unique_id=666149474]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid109" type="AnimatableBody3D" parent="Asteroids" unique_id=827906813]
+transform = Transform3D(-1.4826162, 6.945979, -2.4510844, 2.5183718, 2.8275895, 6.489618, 6.9218674, 0.45902327, -2.8861122, 1.1888494, -43.972733, -1083.4839)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid109" unique_id=918705245]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid109" unique_id=1885811525]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid110" type="AnimatableBody3D" parent="Asteroids" unique_id=1804338288]
+transform = Transform3D(1.5033712, -4.8593774, -4.127619, 4.97269, 3.5478249, -2.36563, 3.990381, -2.5904255, 4.503051, -8.672612, -48.779144, -1076.5149)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid110" unique_id=2060087319]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid110" unique_id=1900447552]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid111" type="AnimatableBody3D" parent="Asteroids" unique_id=89612351]
+transform = Transform3D(-1.3106495, -3.2273111, -5.8946, 6.70986, -0.96237534, -0.9650172, -0.37366074, -5.961371, 3.3469508, -19.545433, -44.816017, -1070.5996)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid111" unique_id=1680667434]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid111" unique_id=1443361216]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid112" type="AnimatableBody3D" parent="Asteroids" unique_id=1901423301]
+transform = Transform3D(0.6159305, -5.3836503, 3.4823751, -2.6371753, 2.9760797, 5.0673714, -5.8443074, -1.9103026, -1.919585, -26.342102, -33.937744, -1068.5057)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid112" unique_id=1108646300]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid112" unique_id=1667773497]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid113" type="AnimatableBody3D" parent="Asteroids" unique_id=1203223147]
+transform = Transform3D(0.5051596, -3.099325, -5.6612906, -1.509874, 5.464282, -3.1261976, 6.275054, 1.5642943, -0.29646114, -25.882381, -21.234394, -1071.213)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid113" unique_id=1336348013]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid113" unique_id=1192776003]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid114" type="AnimatableBody3D" parent="Asteroids" unique_id=375444209]
+transform = Transform3D(-2.3418639, 0.9793995, 6.9434705, 1.1625688, -7.16492, 1.4027419, 6.9151597, 1.5362381, 2.115624, -18.381378, -12.650002, -1077.4547)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid114" unique_id=73649416]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid114" unique_id=926496478]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid115" type="AnimatableBody3D" parent="Asteroids" unique_id=1445011898]
+transform = Transform3D(4.563101, 2.0009568, -4.8558545, -4.8431106, 4.091489, -2.865141, 2.0316076, 5.259366, 4.0763564, -7.3488965, -12.2013, -1084.3103)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid115" unique_id=2145031434]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid115" unique_id=703892163]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Asteroid116" type="AnimatableBody3D" parent="Asteroids" unique_id=2016365641]
+transform = Transform3D(5.544093, -1.9181162, -2.869132, 2.9172168, 5.5054913, 1.9563923, 1.8441626, -2.942525, 5.5307026, 2.052843, -20.098244, -1088.5719)
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Mesh" type="MeshInstance3D" parent="Asteroids/Asteroid116" unique_id=1675198894]
+material_override = ExtResource("3_um8or")
+visibility_range_end = 600.0
+mesh = SubResource("SphereMesh_e2oox")
+
+[node name="Collision" type="CollisionShape3D" parent="Asteroids/Asteroid116" unique_id=1289875026]
+shape = SubResource("SphereShape3D_xdds0")
+
+[node name="Turrets" type="Node3D" parent="." unique_id=992476275]
+
+[node name="Turret00" type="StaticBody3D" parent="Turrets" unique_id=1982885507 instance=ExtResource("4_6ofnk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46.983826, 5.6192503, -320.76755)
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("5_n1c6s")
+seed_index = 1
+
+[node name="Turret01" type="StaticBody3D" parent="Turrets" unique_id=1241421933 instance=ExtResource("4_6ofnk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.38909, 99.26521, -692.01355)
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("5_n1c6s")
+seed_index = 2
+
+[node name="Turret02" type="StaticBody3D" parent="Turrets" unique_id=1293118276 instance=ExtResource("4_6ofnk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.07986, -54.021564, -1046.6998)
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("5_n1c6s")
+seed_index = 3
+
+[node name="Turret03" type="StaticBody3D" parent="Turrets" unique_id=691917431 instance=ExtResource("4_6ofnk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.804552, -0.004924774, -1120.9182)
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("5_n1c6s")
+seed_index = 4
+
+[node name="Turret04" type="StaticBody3D" parent="Turrets" unique_id=207964261 instance=ExtResource("4_6ofnk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.563498, -65.576385, -1209.1165)
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("5_n1c6s")
+seed_index = 5
+
+[node name="Turret05" type="StaticBody3D" parent="Turrets" unique_id=1461816486 instance=ExtResource("4_6ofnk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 81.17055, -29.99929, -874.6096)
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("5_n1c6s")
+seed_index = 6
+
+[node name="Turret06" type="StaticBody3D" parent="Turrets" unique_id=1701689365 instance=ExtResource("4_6ofnk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -111.934006, -20.094803, -410.78705)
+collision_layer = 32
+collision_mask = 0
+script = ExtResource("5_n1c6s")
+seed_index = 7
+
+[node name="Dock" type="Node3D" parent="." unique_id=205413698 instance=ExtResource("6_xhaca")]
+transform = Transform3D(0.9908287, -0.021627637, -0.13338168, 0, 0.98710763, -0.16005802, 0.13512373, 0.15859008, 0.97805464, 0, 0, -1330)
+script = ExtResource("7_ovvtl")
+material = ExtResource("8_q0e6b")
+
+[node name="Projectiles" type="Node3D" parent="." unique_id=357538762 instance=ExtResource("9_opx1x")]
+script = ExtResource("10_5ilyv")
+tracer_material = ExtResource("11_ev6cs")
+
+[node name="SpawnPoint" type="Marker3D" parent="." unique_id=1240099298]
+transform = Transform3D(0.98521173, -0.018965313, -0.17028834, 0, 0.9938553, -0.11068742, 0.17134118, 0.10905054, 0.9791579, 0, 0, 0)
+
+[node name="Ship" type="RigidBody3D" parent="." unique_id=923819628 node_paths=PackedStringArray("tether") instance=ExtResource("12_pthfw")]
+transform = Transform3D(0.98521173, -0.018965313, -0.17028834, 0, 0.9938553, -0.11068742, 0.17134118, 0.10905054, 0.9791579, 0, 0, 0)
+collision_layer = 2
+collision_mask = 37
+mass = 1000.0
+gravity_scale = 0.0
+can_sleep = false
+linear_damp_mode = 1
+angular_damp_mode = 1
+angular_damp = 0.2
+script = ExtResource("13_5pogh")
+tether = NodePath("../Tether")
+
+[node name="Cargo" type="RigidBody3D" parent="." unique_id=1341788504 instance=ExtResource("14_7trak")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.099248, -2.014511, 17.820675)
+collision_layer = 4
+collision_mask = 35
+mass = 600.0
+physics_material_override = SubResource("PhysicsMaterial_crate")
+gravity_scale = 0.0
+can_sleep = false
+linear_damp_mode = 1
+angular_damp_mode = 1
+angular_damp = 0.35
+script = ExtResource("15_b4fc1")
+
+[node name="Tether" type="Node" parent="." unique_id=1434851317 node_paths=PackedStringArray("ship", "cargo", "ship_anchor", "cargo_anchor")]
+script = ExtResource("16_f4ov4")
+ship = NodePath("../Ship")
+cargo = NodePath("../Cargo")
+ship_anchor = NodePath("../Ship/TetherAnchor")
+cargo_anchor = NodePath("../Cargo/TetherAnchor")
+
+[node name="TetherLine" type="MeshInstance3D" parent="." unique_id=623402549 node_paths=PackedStringArray("tether") instance=ExtResource("17_ie1tv")]
+script = ExtResource("18_rqx6h")
+tether = NodePath("../Tether")
+
+[node name="CameraRig" type="Node3D" parent="." unique_id=239581685 node_paths=PackedStringArray("target", "secondary") instance=ExtResource("19_14jr4")]
+script = ExtResource("20_a7g68")
+target = NodePath("../Ship")
+secondary = NodePath("../Cargo")
+
+[node name="Run" type="Node" parent="." unique_id=510000510 node_paths=PackedStringArray("ship", "cargo", "tether", "dock", "projectiles")]
+script = ExtResource("21_cf4ps")
+ship = NodePath("../Ship")
+cargo = NodePath("../Cargo")
+tether = NodePath("../Tether")
+dock = NodePath("../Dock")
+projectiles = NodePath("../Projectiles")
+par_time = 20.798580496651784
+
+[node name="Hud" type="CanvasLayer" parent="." unique_id=2091942309 node_paths=PackedStringArray("run", "cargo") instance=ExtResource("22_mqvlq")]
+script = ExtResource("23_koowu")
+run = NodePath("../Run")
+cargo = NodePath("../Cargo")

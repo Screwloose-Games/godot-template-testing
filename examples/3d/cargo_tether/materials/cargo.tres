@@ -1,0 +1,16 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+; The crate. Deliberately the most saturated thing in the scene: it is the object
+; the player is protecting and the one they most need to find at a glance when it
+; has swung out of the centre of the frame.
+;
+; Emission is on at zero strength so stage 3 can drive emission_energy_multiplier
+; from the integrity fraction without having to swap the material.
+
+[resource]
+albedo_color = Color(0.85, 0.58, 0.16, 1)
+metallic = 0.1
+roughness = 0.6
+emission_enabled = true
+emission = Color(0.85, 0.42, 0.1, 1)
+emission_energy_multiplier = 0.0

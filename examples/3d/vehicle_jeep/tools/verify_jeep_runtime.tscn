@@ -1,0 +1,9 @@
+; A scene rather than a --script tool, because this one needs a real running tree:
+; physics frames to await, and _ready() to actually fire on the nodes it builds.
+
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="verify_jeep_runtime.gd" id="1_runtime"]
+
+[node name="VerifyJeepRuntime" type="Node"]
+script = ExtResource("1_runtime")
