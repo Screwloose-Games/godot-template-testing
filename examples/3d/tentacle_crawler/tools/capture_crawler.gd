@@ -80,7 +80,7 @@ func _run_shots() -> void:
 		await _corridor_shots(centerline)
 
 	await _chase_shot()
-	await _ribbon_solo_shot()
+	await _creature_solo_shot()
 
 
 ## Straight sandbox: drive forward and catch the creature mid-haul.
@@ -140,16 +140,16 @@ func _chase_shot() -> void:
 
 ## THE MOST IMPORTANT SHOT IN THE LIST, and the reason this tool exists.
 ##
-## A black creature against a grey wall can hide a completely broken mesh -- wrong
-## winding, a NaN control point, a strand collapsed to zero width -- while every
-## other photograph still looks perfectly fine. With the corridor hidden there is
+## A dark creature against a grey wall can hide a completely broken pose -- a chain
+## still at its rest angles, a limb sheared by the squash, a NaN control point -- while
+## every other photograph still looks perfectly fine. With the corridor hidden there is
 ## nothing left to mistake for the creature.
-func _ribbon_solo_shot() -> void:
+func _creature_solo_shot() -> void:
 	for node: Node in _descendants(_world):
 		if node is GeometryInstance3D and not _crawler.is_ancestor_of(node):
 			(node as GeometryInstance3D).visible = false
 	await _wait(0.2)
-	await _shoot("ribbon_solo")
+	await _shoot("creature_solo")
 
 
 func _descendants(node: Node) -> Array[Node]:
@@ -189,28 +189,59 @@ func _telemetry() -> String:
 	if tentacles != null:
 		phases = tentacles.call("debug_state")["phases"]
 	return (
-		"planted %d/%d · speed %5.2f m/s · clearance %5.2f m · verts %4d · %s"
+		"planted %d/%d · speed %5.2f m/s · clearance %5.2f m · bones %3d · draws %4d · %s · %s"
 		% [
 			state.get("planted_count", 0),
 			state.get("tentacle_count", 0),
 			state.get("speed", 0.0),
 			state.get("clearance", 0.0),
-			_ribbon_vertex_count(),
+			_posed_bone_count(),
+			_draw_call_count(),
+			_arm_report(),
 			phases,
 		]
 	)
 
 
-## Vertices in the tentacle mesh. Zero here and a photograph of an empty corridor are
+## Bones actually posed this frame. Zero here and a photograph of an empty corridor are
 ## the same image, and only this number tells them apart.
-func _ribbon_vertex_count() -> int:
-	var ribbons: MeshInstance3D = _crawler.get_node_or_null("Ribbons") as MeshInstance3D
-	if ribbons == null or ribbons.mesh == null:
+func _posed_bone_count() -> int:
+	var rig: CrawlerRig = _crawler.get_node_or_null("Rig") as CrawlerRig
+	if rig == null:
 		return 0
-	var mesh: ImmediateMesh = ribbons.mesh as ImmediateMesh
-	if mesh == null or mesh.get_surface_count() == 0:
-		return 0
-	return (mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	var total: int = 0
+	for strand: int in rig.strand_count():
+		total += rig.link_count(strand)
+	return total
+
+
+## Draw calls in the frame just drawn.
+##
+## The creature is 470 separate MeshInstance3D nodes on a GL Compatibility web target,
+## which is the one real performance risk in this example. Printing it next to every
+## shot turns that from a worry into a number somebody can act on.
+## Requested arm length against what the SpringArm actually gave us.
+##
+## "The creature fills the whole frame" has two completely different causes -- the arm
+## is too short, or the arm is fine and a WALL is shortening it -- and they look
+## identical in a screenshot. CLAUDE.md already records that trap costing a debug cycle
+## once; printing both numbers is what stops it costing another.
+func _arm_report() -> String:
+	var director: Node = _world.get_node_or_null("CameraDirector")
+	if director == null:
+		return "arm n/a"
+	for node: Node in _descendants(director):
+		var arm: SpringArm3D = node as SpringArm3D
+		if arm == null or not arm.is_visible_in_tree():
+			continue
+		return "arm %4.1f/%4.1f" % [arm.get_hit_length(), arm.spring_length]
+	return "arm n/a"
+
+
+func _draw_call_count() -> int:
+	return RenderingServer.get_rendering_info(
+		RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME
+	)
 
 
 ## Mean brightness of the frame just drawn.

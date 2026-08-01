@@ -36,7 +36,7 @@ const REFERENCE_SPEED: float = 12.0
 ## Offset from the target, in the TARGET's frame, not the world's. The creature
 ## rolls and crawls on ceilings, so "two metres above the world" is meaningless
 ## here and "two metres off its own back" is not.
-@export var follow_offset_local: Vector3 = Vector3(0.0, 1.4, 0.0)
+@export var follow_offset_local: Vector3 = Vector3(0.0, 0.8, 0.0)
 ## Position follow stiffness, 1/s.
 @export var follow_speed: float = 8.0
 ## Orientation follow stiffness, 1/s. Slower than position on purpose, so the frame
@@ -54,8 +54,15 @@ const REFERENCE_SPEED: float = 12.0
 @export_range(0.0, 0.5) var marker_bias: float = 0.35
 
 @export_group("Dolly")
-@export var spring_length_min: float = 5.5
-@export var spring_length_max: float = 9.0
+## Doubled from 5.5/9.0 for the model, and that is about the ceiling of what is useful.
+##
+## THE ARM IS WALL-LIMITED IN A TUBE, so past a point this number stops meaning
+## anything. The arm rides the body's own backward axis, and the body rolls -- so in an
+## 8 m-tall corridor any tilt walks the arm into the ceiling. Asking for 16 m measured
+## an ACTUAL 4.6 m; `capture_crawler` prints hit-length against requested length for
+## exactly this reason. The lens below is what actually widened the shot.
+@export var spring_length_min: float = 12.0
+@export var spring_length_max: float = 16.0
 ## Arm length added at REFERENCE_SPEED. Pulling back with speed is most of what
 ## makes a crawl read as fast rather than as a slow slide.
 @export var speed_dolly: float = 3.5
@@ -77,8 +84,8 @@ const REFERENCE_SPEED: float = 12.0
 ## 62 -> 72 vertical is about 92 -> 105 horizontal at 16:9, which is a wide-but-sane
 ## corridor lens. Typing 88 here on the assumption it is horizontal gives roughly a
 ## 120 degree horizontal view, and the creature shrinks to a smear at the centre.
-@export var fov_min: float = 62.0
-@export var fov_max: float = 72.0
+@export var fov_min: float = 70.0
+@export var fov_max: float = 80.0
 @export var fov_speed: float = 4.0
 
 var _orientation: Quaternion = Quaternion.IDENTITY

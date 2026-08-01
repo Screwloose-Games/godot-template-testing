@@ -50,54 +50,54 @@ ambient_light_color = Color(0.46, 0.48, 0.55, 1)
 ambient_light_energy = 0.34
 tonemap_mode = 2
 
-[node name="CorridorRun" type="Node3D" unique_id=404444031]
+[node name="CorridorRun" type="Node3D" unique_id=851278484]
 
-[node name="Shell" type="StaticBody3D" parent="." unique_id=354736576]
+[node name="Shell" type="StaticBody3D" parent="." unique_id=1852642801]
 collision_mask = 0
 
-[node name="Mesh" type="MeshInstance3D" parent="Shell" unique_id=83134634]
+[node name="Mesh" type="MeshInstance3D" parent="Shell" unique_id=255216783]
 material_override = ExtResource("1_1v4a0")
 mesh = SubResource("ArrayMesh_yebyj")
 
-[node name="Collision" type="CollisionShape3D" parent="Shell" unique_id=373272931]
+[node name="Collision" type="CollisionShape3D" parent="Shell" unique_id=2022951316]
 shape = SubResource("ConcavePolygonShape3D_x3twj")
 
-[node name="Ribs" type="StaticBody3D" parent="." unique_id=442228084]
+[node name="Ribs" type="StaticBody3D" parent="." unique_id=468276392]
 collision_layer = 2
 collision_mask = 0
 
-[node name="Mesh" type="MeshInstance3D" parent="Ribs" unique_id=1273116523]
+[node name="Mesh" type="MeshInstance3D" parent="Ribs" unique_id=85078124]
 material_override = ExtResource("2_ukmmd")
 mesh = SubResource("ArrayMesh_wa8ge")
 
-[node name="Collision" type="CollisionShape3D" parent="Ribs" unique_id=869077993]
+[node name="Collision" type="CollisionShape3D" parent="Ribs" unique_id=827196232]
 shape = SubResource("ConcavePolygonShape3D_jljpq")
 
-[node name="Centerline" type="Path3D" parent="." unique_id=1581595057]
+[node name="Centerline" type="Path3D" parent="." unique_id=1077123737]
 curve = SubResource("Curve3D_lbdve")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1663397343]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1465033307]
 environment = SubResource("Environment_8ttwi")
 
-[node name="Sun" type="DirectionalLight3D" parent="." unique_id=977969959]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1976085293]
 transform = Transform3D(0.40070075, -0.4198135, 0.8143682, 0, 0.88884544, 0.45820716, -0.916209, -0.18360396, 0.35616103, 0, 0, 0)
 
-[node name="Fill" type="DirectionalLight3D" parent="." unique_id=1421807139]
+[node name="Fill" type="DirectionalLight3D" parent="." unique_id=1389781059]
 transform = Transform3D(0.37179637, -0.48852473, -0.7893738, 0, 0.8503303, -0.5262493, 0.92831427, 0.19565758, 0.31614974, 0, 0, 0)
 light_energy = 0.75
 
-[node name="MarkerPilot" type="Marker3D" parent="." unique_id=1262483214 node_paths=PackedStringArray("camera") instance=ExtResource("3_cd0nl")]
+[node name="MarkerPilot" type="Marker3D" parent="." unique_id=483135983 node_paths=PackedStringArray("camera") instance=ExtResource("3_cd0nl")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12)
 script = ExtResource("4_sext2")
 camera = NodePath("../CameraDirector")
 
-[node name="Crawler" type="Node3D" parent="." unique_id=1311188483 node_paths=PackedStringArray("target_marker", "tentacles") instance=ExtResource("5_1yu6i")]
+[node name="Crawler" type="Node3D" parent="." unique_id=1202811196 node_paths=PackedStringArray("target_marker", "tentacles") instance=ExtResource("5_1yu6i")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
 script = ExtResource("6_hw1c1")
 target_marker = NodePath("../MarkerPilot")
 tentacles = NodePath("Tentacles")
 
-[node name="CameraDirector" type="Node3D" parent="." unique_id=537417474 node_paths=PackedStringArray("target", "marker") instance=ExtResource("7_m6c67")]
+[node name="CameraDirector" type="Node3D" parent="." unique_id=422128054 node_paths=PackedStringArray("target", "marker") instance=ExtResource("7_m6c67")]
 script = ExtResource("8_f5fwm")
 target = NodePath("../Crawler")
 marker = NodePath("../MarkerPilot")

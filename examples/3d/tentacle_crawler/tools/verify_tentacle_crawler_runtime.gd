@@ -33,7 +33,7 @@ func _ready() -> void:
 	await _check_tentacles()
 	await _check_drag_requires_anchors()
 	await _check_ratchet()
-	await _check_ribbon_geometry()
+	await _check_bone_pose()
 	await _check_corridor_run()
 	await _check_input_owner()
 	await _check_camera()
@@ -147,10 +147,17 @@ func _check_pushoff_control() -> void:
 	_crawler.teleport(Vector3(3.0, 0.0, -8.0))
 	await _wait(2.0)
 	var clearance: float = _crawler.debug_state()["clearance"]
+	# Measured against body_radius rather than a literal, because with the probe off the
+	# creature is still pushed out to its own shell -- and a control whose threshold is a
+	# magic number stops being a control the first time the creature changes size.
+	var floor_gap: float = _crawler.body_radius + 0.25
 	_report(
 		"pushoff-ctrl",
-		clearance < 1.7,
-		"probe_gain 0, no leash: clearance still %.2f m (need < 1.7, i.e. did NOT move)" % clearance
+		clearance < floor_gap,
+		(
+			"probe_gain 0, no leash: clearance still %.2f m (need < %.2f, i.e. did NOT move)"
+			% [clearance, floor_gap]
+		)
 	)
 
 
@@ -263,12 +270,20 @@ func _check_tentacles() -> void:
 		if launches[i] < 2:
 			starved += 1
 	var collisions: int = _same_tick_launches(launch_ticks, strands)
+	# Misses alongside launches, because "never got a launch slot" and "got the slot and
+	# could not reach anything" look identical from the launch counts and want opposite
+	# fixes -- one is the scheduler, the other is reach or sector geometry.
+	var misses: Array[int] = []
+	var reaches: Array[String] = []
+	for i: int in strands:
+		misses.append(_tentacles.search_misses(i))
+		reaches.append("%.1f" % _tentacles.reach_of(i))
 	_report(
 		"stagger",
 		starved == 0 and collisions == 0,
 		(
-			"launches %s, %d strand(s) fired < 2 times, %d same-tick collisions"
-			% [str(launches), starved, collisions]
+			"launches %s, misses %s, reach %s, %d strand(s) fired < 2 times, %d same-tick collisions"
+			% [str(launches), str(misses), str(reaches), starved, collisions]
 		)
 	)
 
@@ -378,63 +393,81 @@ func _anchor_is_on_wall(index: int) -> bool:
 	return (hit["position"] as Vector3).distance_to(to) <= TentacleTuning.WALL_LOST_TOLERANCE
 
 
+## Two bars, because the rule and the property it protects are not the same thing.
+## `is_anchor_valid` gates on distance ahead of the STRAND'S OWN SHOULDER, so that is
+## what gets the real threshold; the creature as a whole must still never anchor behind
+## itself, and that is the second, weaker test.
 func _anchor_is_ahead(index: int) -> bool:
-	var ahead: Vector3 = _tentacles.anchor(index) - _crawler.global_position
-	return ahead.dot(_crawler.wanted_direction()) > TentacleTuning.FORWARD_BIAS_MIN * 0.9
+	var travel: Vector3 = _crawler.wanted_direction()
+	var anchor: Vector3 = _tentacles.anchor(index)
+	var from_shoulder: float = (anchor - _tentacles.shoulder(index)).dot(travel)
+	var from_body: float = (anchor - _crawler.global_position).dot(travel)
+	return from_shoulder > TentacleTuning.FORWARD_BIAS_MIN * 0.9 and from_body > 0.0
 
 
 func _gap() -> float:
 	return (_crawler.debug_state()["position"] as Vector3).distance_to(_marker.global_position)
 
 
-## The tentacles are hand-built geometry, and every physics assertion above passes
-## against a mesh that renders as nothing at all.
+## The bones are the whole creature now, and every physics assertion above passes
+## against a chain that never moved at all -- nothing in the solver ever reads a bone.
 ##
-## The AABB VOLUME CEILING is the important one. A mis-stitched triangle strip joins
-## the end of one tentacle to the root of the next with a real triangle, which stays
-## visually subtle -- a thin dark sliver that reads as a rendering glitch -- while
-## being completely wrong. A strip that goes properly wrong spans the whole level.
-## Both show up as an AABB far larger than a 14 m reach can justify.
-func _check_ribbon_geometry() -> void:
+## THE LINK-LENGTH BAND IS THE IMPORTANT ONE. The poser carries a running frame down a
+## nested chain by hand; if that recurrence is wrong the error COMPOUNDS, so joints
+## either bunch at the shoulder or fly apart down the limb. Both look, from a single
+## screenshot, like a slightly odd pose. Measured against the model's own 0.24 m link
+## and the stretch clamp that is allowed to move it, the difference is unmissable.
+func _check_bone_pose() -> void:
 	await _load_world()
 	if _crawler == null:
-		_report("ribbon-geometry", false, "no Crawler in the scene")
+		_report("bone-pose", false, "no Crawler in the scene")
 		return
-	var ribbons: TentacleRibbons = _crawler.get_node_or_null("Ribbons") as TentacleRibbons
-	if ribbons == null:
-		_report("ribbon-geometry", false, "no TentacleRibbons under the Crawler")
+	var bones: TentacleBones = _crawler.get_node_or_null("Bones") as TentacleBones
+	var rig: CrawlerRig = _crawler.get_node_or_null("Rig") as CrawlerRig
+	if bones == null or rig == null:
+		_report("bone-pose", false, "no TentacleBones or CrawlerRig under the Crawler")
 		return
 	await _wait(2.0)
-	# The mesh is rebuilt in _process, so let a frame actually draw before reading it.
 	await get_tree().process_frame
 
-	var mesh: ImmediateMesh = ribbons.mesh as ImmediateMesh
-	if mesh == null or mesh.get_surface_count() == 0:
-		_report("ribbon-geometry", false, "no surfaces built")
-		return
-	var surfaces: int = mesh.get_surface_count()
-	var vertices: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-
+	var nominal: float = rig.link_step()
+	var low: float = nominal * TentacleTuning.STRETCH_MIN - 0.01
+	var high: float = nominal * TentacleTuning.STRETCH_MAX + 0.01
+	var posed: int = 0
 	var finite: bool = true
-	var reach_limit: float = TentacleTuning.REACH_MAX * 1.6
-	var stray: int = 0
-	for vertex: Vector3 in vertices:
-		if not vertex.is_finite():
-			finite = false
-		elif vertex.distance_to(_crawler.global_position) > reach_limit:
-			stray += 1
+	var out_of_band: int = 0
+	var far_tips: int = 0
+	var worst: float = 0.0
 
-	var box: AABB = mesh.get_aabb()
-	var volume: float = box.size.x * box.size.y * box.size.z
-	var expected: int = _tentacles.count() * (TentacleRibbons.SEGMENTS + 1) * 2
-	var ok: bool = surfaces == 1 and finite and stray == 0
-	ok = ok and vertices.size() >= expected and volume > 0.001 and volume < 4000.0
+	for strand: int in rig.strand_count():
+		var previous: Vector3 = rig.socket(strand).global_position
+		for link: int in rig.link_count(strand):
+			var bone: Node3D = rig.bone(strand, link)
+			var here: Vector3 = bone.global_position
+			if not here.is_finite():
+				finite = false
+				continue
+			if link > 0:
+				var span: float = previous.distance_to(here)
+				if span < low or span > high:
+					out_of_band += 1
+				worst = maxf(worst, absf(span - nominal))
+			previous = here
+			posed += 1
+		# A planted strand whose chain ends nowhere near its tip is the failure the whole
+		# per-strand reach system exists to prevent.
+		if _tentacles.is_planted(strand):
+			if bones.chain_tip(strand).distance_to(_tentacles.tip(strand)) > 1.5:
+				far_tips += 1
+
+	var expected: int = 141
+	var ok: bool = finite and out_of_band == 0 and far_tips == 0 and posed >= expected
 	_report(
-		"ribbon-geometry",
+		"bone-pose",
 		ok,
 		(
-			"%d surface(s), %d verts (need >= %d), finite %s, %d stray, AABB %.1f m^3 (need < 4000)"
-			% [surfaces, vertices.size(), expected, finite, stray, volume]
+			"%d bones posed (need >= %d), finite %s, %d links off the %.2f-%.2f m band (worst %.3f), %d planted tips adrift"
+			% [posed, expected, finite, out_of_band, low, high, worst, far_tips]
 		)
 	)
 

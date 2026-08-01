@@ -39,7 +39,11 @@ const AXES: Array[Vector3] = [
 
 @export_group("Flight")
 ## Metres per second at full stick.
-@export var move_speed: float = 9.0
+##
+## The marker is the creature's INTENT, and the leash converts distance-behind into
+## pull -- so this is the top speed the creature gets dragged at, not just how fast the
+## dot flies. Capped in practice by CrawlerBody.max_speed.
+@export var move_speed: float = 27.0
 @export var boost_multiplier: float = 2.1
 ## How fast the marker converges on the commanded velocity, 1/s.
 @export var accel: float = 26.0

@@ -49,6 +49,7 @@ func _process(_delta: float) -> bool:
 	_check_uid_sidecars()
 	_check_render_settings()
 	_check_tuning_invariants()
+	_check_rig_assembly()
 
 	if _failures > 0:
 		print("FAILED: %d check(s)" % _failures)
@@ -56,6 +57,143 @@ func _process(_delta: float) -> bool:
 		print("all checks passed")
 	quit(1 if _failures > 0 else 0)
 	return true
+
+
+## Everything that only becomes true once CrawlerRig has assembled the model.
+##
+## THIS IS THE CHECK THAT CATCHES A CREATURE THAT RENDERS PERFECTLY AND IS WRONG.
+## Nothing in the solver ever reads a bone, so a chain still parented under the squash,
+## left at its rest pose, or never adopted at all passes every other assertion in both
+## suites while being plainly broken on screen.
+##
+## Needs `_ready()`, so the crawler is added to the tree rather than merely
+## instantiated -- `_check_kinematic` above only inspects the packed shape and does not.
+func _check_rig_assembly() -> void:
+	var before: int = _failures
+	var crawler: Node3D = (
+		(load(_res("../actors/crawler/crawler.tscn")) as PackedScene).instantiate() as Node3D
+	)
+	root.add_child(crawler)
+
+	var rig: CrawlerRig = crawler.get_node_or_null("Rig") as CrawlerRig
+	var limbs: Node3D = crawler.get_node_or_null("Rig/Limbs") as Node3D
+	var hull: Node3D = crawler.get_node_or_null("Rig/Hull") as Node3D
+	var tentacles: TentacleArray = crawler.get_node_or_null("Tentacles") as TentacleArray
+	if rig == null or limbs == null or hull == null or tentacles == null:
+		_fail("rig", "the crawler is missing Rig, Rig/Limbs, Rig/Hull or Tentacles")
+		crawler.free()
+		return
+
+	var wanted: int = TentacleTuning.TENTACLE_COUNT
+	if limbs.get_child_count() != wanted:
+		_fail("rig", "%%Limbs has %d chains, expected %d" % [limbs.get_child_count(), wanted])
+	if rig.strand_count() != wanted:
+		_fail("rig", "the rig adopted %d chains, expected %d" % [rig.strand_count(), wanted])
+	if hull.get_child_count() == 0:
+		_fail("rig", "%Hull is empty; the torso was never moved under the squash")
+
+	# The shear. A chain under the squash skews in proportion to how hard the creature
+	# is heaving, which is invisible to every physics assertion in this folder.
+	for i: int in mini(rig.strand_count(), wanted):
+		var socket: Node3D = rig.socket(i)
+		if socket != null and hull.is_ancestor_of(socket):
+			_fail("rig", "chain %d is under %Hull and will be sheared by the squash" % i)
+		if rig.link_count(i) < 2:
+			_fail("rig", "chain %d walked only %d bones" % [i, rig.link_count(i)])
+
+	# The torso's real extent against the radius the solver keeps off walls. Measured,
+	# because the whole point of body_radius is that the VISUAL never pokes through a
+	# wall the solver believes it is clear of.
+	var box: AABB = _visual_bounds(hull, crawler)
+	var reach_out: float = maxf(
+		maxf(absf(box.position.x), absf(box.end.x)),
+		maxf(
+			maxf(absf(box.position.y), absf(box.end.y)), maxf(absf(box.position.z), absf(box.end.z))
+		)
+	)
+	var body: CrawlerBody = crawler as CrawlerBody
+	print(
+		(
+			"[rig] torso %.2f x %.2f x %.2f m, max half-extent %.2f, body_radius %.2f"
+			% [box.size.x, box.size.y, box.size.z, reach_out, body.body_radius]
+		)
+	)
+	if reach_out > body.body_radius:
+		_fail(
+			"rig",
+			(
+				"the torso reaches %.2f m but body_radius is %.2f; it will poke through walls"
+				% [reach_out, body.body_radius]
+			)
+		)
+
+	# Vertex colours. The body and gullet have no base colour factor at all, so without
+	# this flag they render FLAT WHITE and the creature looks like a bug in the material
+	# rather than in the import.
+	var painted: int = 0
+	for node: Node in _descendants(hull):
+		var mesh_node: MeshInstance3D = node as MeshInstance3D
+		if mesh_node == null or mesh_node.mesh == null:
+			continue
+		for surface: int in mesh_node.mesh.get_surface_count():
+			if (mesh_node.mesh.surface_get_format(surface) & Mesh.ARRAY_FORMAT_COLOR) == 0:
+				continue
+			var material: StandardMaterial3D = (
+				mesh_node.get_active_material(surface) as StandardMaterial3D
+			)
+			if material == null or not material.vertex_color_use_as_albedo:
+				_fail("rig", "%s renders vertex colours as white" % mesh_node.name)
+				continue
+			painted += 1
+	if painted == 0:
+		_fail("rig", "no vertex-coloured surface found under %Hull")
+
+	_check_sectors(tentacles)
+	crawler.free()
+	_pass_if("rig", before, "%d chains adopted, torso under the squash, colours live" % wanted)
+
+
+## Two strands hunting the same patch of wall reject each other on
+## ANCHOR_MIN_SEPARATION and the creature grows a beard on one side. The sectors exist
+## to stop that, so the gap between neighbours has to beat what the jitter can close.
+func _check_sectors(tentacles: TentacleArray) -> void:
+	var angles: Array[float] = []
+	for i: int in tentacles.count():
+		angles.append(fposmod(tentacles.sector_of(i), TAU))
+	angles.sort()
+	var tightest: float = TAU
+	for i: int in angles.size():
+		var next: float = angles[(i + 1) % angles.size()]
+		tightest = minf(tightest, absf(angle_difference(angles[i], next)))
+	print(
+		(
+			"[sectors] tightest neighbour gap %.3f rad, jitter spans %.3f"
+			% [tightest, TentacleTuning.SECTOR_JITTER * 2.0]
+		)
+	)
+	if tightest <= TentacleTuning.SECTOR_JITTER * 2.0:
+		_fail(
+			"rig",
+			(
+				"sectors %.3f rad apart but jitter spans %.3f; two strands can collide"
+				% [tightest, TentacleTuning.SECTOR_JITTER * 2.0]
+			)
+		)
+
+
+## World-space bounds of every mesh under `node`, expressed relative to `frame`.
+func _visual_bounds(node: Node, frame: Node3D) -> AABB:
+	var box: AABB = AABB()
+	var started: bool = false
+	var to_frame: Transform3D = frame.global_transform.affine_inverse()
+	for child: Node in _descendants(node):
+		var mesh_node: MeshInstance3D = child as MeshInstance3D
+		if mesh_node == null or mesh_node.mesh == null:
+			continue
+		var local: AABB = (to_frame * mesh_node.global_transform) * mesh_node.mesh.get_aabb()
+		box = local if not started else box.merge(local)
+		started = true
+	return box
 
 
 func _check_scenes_load() -> void:
@@ -96,7 +234,12 @@ func _check_wiring_survived_packing() -> void:
 			["Crawler", "tentacles"],
 			["Crawler/Tentacles", "body"],
 			["Crawler/Tentacles", "shoulders"],
-			["Crawler/Ribbons", "tentacles"],
+			["Crawler/Tentacles", "rig"],
+			["Crawler/Rig", "model"],
+			["Crawler/Rig", "hull"],
+			["Crawler/Rig", "limbs"],
+			["Crawler/Bones", "tentacles"],
+			["Crawler/Bones", "rig"],
 			["CameraDirector", "target"],
 			["CameraDirector", "marker"],
 		]
@@ -182,11 +325,11 @@ func _check_single_input_owner() -> void:
 	if readers.size() != 1 or readers[0] != "marker_pilot.gd":
 		_fail("input", "expected only marker_pilot.gd to read input, found %s" % str(readers))
 
-	# The renderer reads state and writes geometry. Nothing else.
-	var ribbons: String = _read_code(_res("../components/tentacle/tentacle_ribbons.gd"))
+	# The poser reads state and writes transforms. Nothing else.
+	var bones: String = _read_code(_res("../components/tentacle/tentacle_bones.gd"))
 	for banned: String in ["apply_", "Input.", "intersect_ray"]:
-		if ribbons.contains(banned):
-			_fail("input", "tentacle_ribbons.gd mentions %s; it must only draw" % banned)
+		if bones.contains(banned):
+			_fail("input", "tentacle_bones.gd mentions %s; it must only pose" % banned)
 	_pass_if("input", before, "marker_pilot.gd is the only input reader")
 
 

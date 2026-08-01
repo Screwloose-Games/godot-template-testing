@@ -77,15 +77,36 @@ extends Node3D
 ## target is precisely the motion this creature is not supposed to have.
 @export var leash_damping: float = 5.4
 ## Ceiling on leash acceleration, m/s^2, so a teleported marker cannot launch it.
-@export var leash_max_accel: float = 26.0
+##
+## Raised with the marker's speed. Terminal velocity under the leash alone is this
+## over `body_drag`, so at 26 the creature topped out near 16 m/s however fast the
+## marker flew -- tripling the marker just stretched the leash and changed nothing you
+## could see.
+@export var leash_max_accel: float = 60.0
 
 @export_group("Probe")
 ## Metres of wall clearance the body tries to keep.
-@export var probe_comfort: float = 2.6
+##
+## 4.2, up from 2.6, and this is a GAIT change rather than a comfort tweak. The body
+## rolls so its up-axis points away from the nearest wall, so a strand's sector is
+## fixed relative to whichever wall the creature is hugging -- and the four raised arms
+## end up permanently aimed across the tube. At 2.6 the creature crawled along one wall
+## with the far side 6.4 m away, which is past every arm's reach, so all four starved
+## in SEARCHING while the four legs did the work. Set above the corridor's half-height
+## the push comes from all sides at once, the creature runs down the MIDDLE, and every
+## strand faces wall at about the same distance. An eight-limbed creature in a tube
+## should be using the whole tube.
+@export var probe_comfort: float = 4.2
 ## How hard it pushes off a wall inside that distance, 1/s^2 per metre.
 @export var probe_gain: float = 6.0
 ## Hard shell radius, metres. Inside this the body is pushed out positionally.
-@export var body_radius: float = 1.2
+##
+## 2.15, up from 1.2, because the greybox sphere became a 3.1 x 3.6 x 3.6 m creature.
+## The invariant it has to preserve is that the VISUAL never pokes through a wall the
+## solver believes it is clear of, so this has to clear the torso's largest half-extent
+## (1.82 m) with the same margin the sphere had. `[rig]` in the static suite MEASURES
+## the torso rather than trusting this comment, and fails if the two ever part company.
+@export var body_radius: float = 2.15
 ## How far the fan looks. Past this a direction reads as "open".
 @export var probe_range: float = 25.0
 @export_flags_3d_physics var probe_mask: int = CrawlerLayers.MASK_BODY_PROBE
@@ -94,10 +115,19 @@ extends Node3D
 
 @export_group("Motion")
 ## Medium drag, 1/s.
-@export var body_drag: float = 1.6
+##
+## 1.2, down from 1.6. Terminal speed under the leash is `leash_max_accel / body_drag`,
+## so drag is the other half of how fast this thing can ever go -- raising the ceiling
+## without touching it just made the creature lurch harder into the same wall of drag
+## and cover slightly LESS ground. The ratchet still reads: `brake_multiplier` triples
+## this between strokes, and that ratio is what the pulse-glide comes from, not the
+## absolute value.
+@export var body_drag: float = 1.2
 ## Extra drag while gripping but not pulling. The RATCHET -- see `_drag_accel`.
 @export var brake_multiplier: float = 3.0
-@export var max_speed: float = 14.0
+## Soft ceiling on speed, m/s. Raised alongside `leash_max_accel`; with the marker at
+## 27 m/s the creature was sitting on the old 14 for most of a driven run.
+@export var max_speed: float = 30.0
 
 @export_group("Orientation")
 ## How fast the up reference swings toward the nearest wall, 1/s.

@@ -7,9 +7,14 @@ tentacles at the walls and hauling. Carrion, or a symbiote — black, gangly, an
 entirely procedural.
 
 **Nothing here is keyframed.** A `Marker3D` carries the player's *intent*; the body
-and all six tentacles are solved from it every physics tick by algorithms. There is
-no skeleton, no `AnimationPlayer`, no imported model. The creature is four spheres
-and an `ImmediateMesh`.
+and all eight tentacles are solved from it every physics tick by algorithms.
+
+The creature is an imported `.glb` with **no skin, no `Skeleton3D` and no
+`AnimationPlayer`** — its "bones" are 141 nested plain `Node3D`s in eight chains, and
+every one of them is posed from the gait solver's own curve every physics tick. So
+`SkeletonIK3D`, `SkeletonModifier3D`, bone maps and retargeting are all irrelevant
+here, and `nodes/import_as_skeleton_bones` would not change that: it only affects
+files that have skins, and this one has none.
 
 The question this prototype exists to answer is whether hauling yourself through a
 tube by throwing grappling limbs at it feels good to drive.
@@ -59,7 +64,7 @@ back and keeps writhing in place.
 distance it pulls nothing at all, which is why the creature visibly trails rather
 than wearing the marker like a cursor.
 
-**Tentacles do the moving.** Six strands cycle
+**Tentacles do the moving.** Eight strands cycle
 `SEARCHING → REACHING → PLANTED ⇄ PULLING → RELEASING`. Each hunts in its own
 sector of a cone opened around the direction the body is *travelling* — not where
 its nose points, which is what lets it turn a corner instead of grinding into one.
@@ -79,7 +84,16 @@ course, and any level you drop it into.
 **Curves have inertia.** Each strand is a cubic Bézier whose two control points are
 themselves spring-lagged. When the body lurches the midsection stays behind about
 150 ms and then whips — that lag is the whole symbiote read, and a plain Bézier has
-none of it.
+none of it. The chain is then laid along that curve rather than solved at the anchor,
+which is the point: a limb that tracks its target exactly looks mechanical however
+correct its joint angles are.
+
+**Limbs are not interchangeable.** The model's chains run from 14 bones to 23, so each
+strand carries its own reach (4.4 m to 7.5 m) and its own search sector, both solved at
+`_ready` from the geometry rather than from an index. Two consequences are worth
+knowing: a strand prefers anchors at *its own* working distance rather than the nearest
+one — otherwise the long limbs camp the near wall and the short ones can never get past
+them — and a strand that keeps failing widens its search rather than starving politely.
 
 ## Measured numbers
 
@@ -93,29 +107,37 @@ here is the leash, the drag and the stroke ratchet, not the framing.
 
 | | idle (marker parked) | driven (forward held) |
 |---|---|---|
-| travelled | 0.00 m in 8 s | 43.33 m in 8 s (5.42 m/s) |
-| speed | 0.00 m/s | 0.05 – 13.91 m/s, mean 6.15 |
-| marker separation | 4.00 m, dead steady | 3.19 – 11.40 m, mean 7.64 |
-| strokes | 6 in 8 s | 13 in 8 s (0.62 s apart) |
-| planted | 3–4 for 98% of the time | 2–4 for 99% |
+| travelled | 0.00 m in 8 s | 36.61 m in 8 s (4.58 m/s) |
+| speed | 0.00 m/s | 0.01 – 23.81 m/s, mean 5.12 |
+| marker separation | 4.00 m, dead steady | 2.84 – 24.74 m, mean 7.17 |
+| strokes | 2 in 8 s | 10 in 8 s (0.80 s apart) |
+| planted | 4–5 for 99% of the time | 2–5 for 89% |
 
 Idle separation settling to exactly 4.00 m is the leash slack, and it is the point:
 the creature holds station rather than creeping past the marker.
 
 On the generated course it covers **97% of 244 m** with a minimum wall clearance of
-1.07 m and never once leaves the shell.
+1.96 m and never once leaves the shell.
+
+The peak speed is the marker's, not the creature's own: at `move_speed` 27 m/s the
+leash is what supplies the lurch, and `leash_max_accel / body_drag` is the real ceiling
+on how fast this thing can ever go. The mean is grip-limited instead — the creature
+cannot pull faster than its tentacles cycle, which is what keeps the ratchet readable
+at speed.
 
 ## Layout
 
 ```
+assets/models/         cosmic-horror.glb -- no skin, no animations, 141 bone nodes
 actors/crawler/        crawler.tscn + crawler_body.gd   the integrator
 components/
   marker_pilot/        the 6DOF marker; the ONLY file that reads input
   probe/               corridor_probe.gd, the 14-ray fan
-  tentacle/            tentacle_array.gd (state) + tentacle_ribbons.gd (geometry)
+  rig/                 crawler_rig.gd -- assembles the imported model at _ready
+  tentacle/            tentacle_array.gd (state) + tentacle_bones.gd (bone posing)
   camera/              orbit rig (drives; owns "forward"), chase rig, and the director
 data/                  crawler_layers, tentacle_tuning, crawler_math -- no engine deps
-materials/             one .tres per greybox surface
+materials/             one .tres per corridor surface, plus the anchor pad
 scenes/                crawl_sandbox.tscn (hand-authored), corridor_run.tscn (GENERATED)
 tools/                 generator, both verify suites, the measure and capture rigs
 ```
@@ -143,7 +165,7 @@ godot --headless --path <root> --script res://examples/3d/tentacle_crawler/tools
 # structure: wiring, layers, boundaries, paths, uids, tuning invariants
 godot --headless --path <root> --script res://examples/3d/tentacle_crawler/tools/verify_tentacle_crawler_static.gd
 
-# behaviour: lag, ratchet, anchors, stagger, corridor traversal, ribbon geometry
+# behaviour: lag, ratchet, anchors, stagger, corridor traversal, bone pose
 godot --headless --path <root> res://examples/3d/tentacle_crawler/tools/verify_tentacle_crawler_runtime.tscn
 
 # the numbers in the table above
@@ -174,8 +196,21 @@ godot --path <root> res://examples/3d/tentacle_crawler/tools/capture_crawler.tsc
   heave; the drive is gated to zero, so nothing comes of it. It reads as straining
   in place, which suits the thing, but the animation and the motion are honestly
   decoupled in that one state.
-- **The wall push-off does not centre.** It only acts within 2.6 m of a surface, so
-  in a 9 m corridor there is a wide dead band through the middle. Centring proper is
-  a side effect of where the anchors happen to be.
-- **Six strands, one creature.** Nothing here is pooled or instanced for a crowd. A
-  second crawler is a second full set of raycasts.
+- **The wall push-off now centres, deliberately.** `probe_comfort` sits above the
+  corridor's half-height, so the push comes from every side at once and the creature
+  runs down the middle. That is a gait decision, not a comfort one: the body rolls so
+  its up-axis points away from the nearest wall, which pins each strand's sector
+  relative to whichever wall it is hugging — and crawling along one wall left the four
+  raised arms permanently aimed across a tube they could not span. All four starved.
+- **470 MeshInstance3D, one creature.** The model is 468 voxel cubes plus a body and a
+  gullet, and on GL Compatibility that is ~478 draw calls in a shot (the capture tool
+  prints the number). Triangles are trivial at ~29k, so this is purely draw-call bound.
+  If it needs to come down, merge each bone's three cubes at import time via an
+  `EditorScenePostImport` script — 423 draws become 141 — before reaching for a
+  MultiMesh, which would move the cost onto per-frame GDScript instead.
+- **The chase camera is tight.** The creature is 3.9 m across in an 8 m-tall tube, and
+  a `SpringArm3D` riding a body that rolls walks into the ceiling: asking for 16 m
+  measured an actual 4.6 m. The lens was widened instead. The orbit rig, which is the
+  camera the game starts on, frames it fine.
+- **Nothing here is pooled or instanced for a crowd.** A second crawler is a second
+  full set of raycasts and another 470 draw calls.

@@ -23,10 +23,10 @@ unique_name_in_owner = true
 [node name="SpringArm" type="SpringArm3D" parent="Yaw/Pitch"]
 unique_name_in_owner = true
 collision_mask = 1
-spring_length = 7.0
+spring_length = 19.0
 margin = 0.3
 
 [node name="Camera" type="Camera3D" parent="Yaw/Pitch/SpringArm"]
 unique_name_in_owner = true
-fov = 65.0
+fov = 72.0
 far = 400.0

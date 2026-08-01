@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=6 format=3]
 
 ; The creature.
 ;
@@ -8,27 +8,31 @@
 ; the camera's SpringArm3D something to catch on. `[kinematic]` in the static suite
 ; fails if a RigidBody3D or CharacterBody3D ever appears here.
 ;
-; Three layers of node, each with one job:
+; Four layers of node, each with one job:
 ;
 ;   Crawler    position and orientation. Written once per tick, always unit scale.
+;   %Rig       the model's yaw, uniform scale and re-centring. Assembled at _ready.
 ;   %Hull      the SQUASH. Scaling this instead of the root is deliberate -- scaling
 ;              the root would also scale the shoulder offsets below and the probe
 ;              fan's origin, so the creature would grow tentacle reach as it flexed.
-;   %Shoulders where the tentacles grow from. Read by TentacleArray, never moved.
+;   %Limbs     where the tentacles grow from, and NOT under the squash. See below.
+;
+; CHILD ORDER IS LOAD-BEARING, TWICE.
+;
+; `Rig` before `Tentacles`: Godot readies a node's children in tree order, each
+; subtree fully, before the parent. TentacleArray._ready() seeds every strand from
+; `shoulder(i)`, which reads %Limbs' children -- and those children do not exist
+; until CrawlerRig._ready() has moved them there. Reorder these two and the strands
+; all seed at the body's origin with no error anywhere.
+;
+; `Hull` and `Limbs` before `Model` inside the rig: the rig reparents out of Model
+; into both, so both have to be in the tree when it runs.
 
 [ext_resource type="Script" path="crawler_body.gd" id="1_body"]
-[ext_resource type="Material" path="../../materials/crawler_flesh.tres" id="2_flesh"]
-[ext_resource type="Material" path="../../materials/crawler_outline.tres" id="3_outline"]
+[ext_resource type="Script" path="../../components/rig/crawler_rig.gd" id="2_rig"]
+[ext_resource type="PackedScene" uid="uid://c82xv6ka1nfp3" path="../../assets/models/cosmic-horror.glb" id="3_model"]
 [ext_resource type="Script" path="../../components/tentacle/tentacle_array.gd" id="4_tentacles"]
-[ext_resource type="PackedScene" path="../../components/tentacle/tentacle_ribbons.tscn" id="5_ribbons"]
-
-; Low segment counts on purpose: this is a web-first GL Compatibility target and the
-; creature is a black blob whose silhouette does all the work. 12x6 is plenty.
-[sub_resource type="SphereMesh" id="SphereMesh_lump"]
-radius = 0.5
-height = 1.0
-radial_segments = 12
-rings = 6
+[ext_resource type="PackedScene" path="../../components/tentacle/tentacle_bones.tscn" id="5_bones"]
 
 ; node_paths= on the ROOT node wires the body to its own tentacles. The instancing
 ; scene adds its own node_paths for `target_marker`; the two lists are independent,
@@ -37,81 +41,45 @@ rings = 6
 script = ExtResource("1_body")
 tentacles = NodePath("Tentacles")
 
-[node name="Hull" type="Node3D" parent="."]
+; Everything the model needs doing to it before the solver can drive it: a 180 degree
+; yaw (it faces +Z, Godot's forward is -Z), the uniform scale, and an offset that puts
+; the torso's centre on the Crawler origin rather than standing it on top. All three
+; are computed in CrawlerRig._ready() from the model's own numbers, so this node's
+; authored transform is identity and re-exporting the creature cannot silently bury it
+; in the floor.
+[node name="Rig" type="Node3D" parent="." node_paths=PackedStringArray("model", "hull", "limbs")]
+unique_name_in_owner = true
+script = ExtResource("2_rig")
+model = NodePath("Model")
+hull = NodePath("Hull")
+limbs = NodePath("Limbs")
+
+; The squash node. Receives the torso -- and ONLY the torso.
+;
+; CrawlerBody writes a NON-UNIFORM scale here every physics tick. Godot composes a
+; child's global basis as `parent.basis * child.basis`, so a non-uniform parent times a
+; child rotation is a SHEAR, not a rotation. Any bone chain under this node would
+; therefore skew in proportion to how hard the creature happened to be heaving, and
+; because the bones are nested that shear compounds down the chain. Nothing errors; the
+; limbs just flatten and corkscrew, hardest at the exact moment you are looking at them.
+[node name="Hull" type="Node3D" parent="Rig"]
 unique_name_in_owner = true
 
-; The INVERTED-HULL OUTLINE, and it is first in the list because it must draw before
-; the body it sits behind.
+; The eight chain roots, squashed by nothing. Their child ORDER is their strand index --
+; TentacleArray reads `shoulders.get_child(i)` positionally -- and CrawlerRig fills them
+; in ascending tentacle_00..07 order to match.
 ;
-; It is the same sphere at 108%, with crawler_outline.tres culling FRONT faces -- so
-; only the parts of the enlarged shell that fall behind the real body survive, which
-; is exactly the silhouette. Without it a black creature against a grey wall in a dim
-; corridor is genuinely invisible: it renders perfectly and reads as nothing, which
-; is the highest-probability cosmetic failure in this whole example.
-[node name="Outline" type="MeshInstance3D" parent="Hull"]
-transform = Transform3D(1.404, 0, 0, 0, 1.08, 0, 0, 0, 2.16, 0, 0, 0)
-mesh = SubResource("SphereMesh_lump")
-material_override = ExtResource("3_outline")
-cast_shadow = 0
-
-; The body proper: a sphere stretched 1.3 x 1.0 x 2.0, so it is longer than it is
-; wide and its facing is readable from any angle. Max half-extent is 1.0 m against a
-; body_radius of 1.2, so the visual never pokes through a wall the solver thinks it
-; is clear of.
-[node name="Core" type="MeshInstance3D" parent="Hull"]
-transform = Transform3D(1.3, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0)
-mesh = SubResource("SphereMesh_lump")
-material_override = ExtResource("2_flesh")
-
-; Three asymmetric lumps. Purely cosmetic, and worth the three draw calls: a
-; perfectly smooth ellipsoid has no features to read rotation against, so the writhe
-; and the roll-toward-the-pull are both invisible on it.
-[node name="Lump1" type="MeshInstance3D" parent="Hull"]
-transform = Transform3D(0.55, 0, 0, 0, 0.55, 0, 0, 0, 0.55, 0.35, 0.28, -0.4)
-mesh = SubResource("SphereMesh_lump")
-material_override = ExtResource("2_flesh")
-
-[node name="Lump2" type="MeshInstance3D" parent="Hull"]
-transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, -0.4, 0.15, 0.3)
-mesh = SubResource("SphereMesh_lump")
-material_override = ExtResource("2_flesh")
-
-[node name="Lump3" type="MeshInstance3D" parent="Hull"]
-transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0.1, -0.35, 0.6)
-mesh = SubResource("SphereMesh_lump")
-material_override = ExtResource("2_flesh")
-
-; Six shoulders on a ring, forward of the body's middle (-Z is forward).
-;
-; The ring is FLATTENED on Y (0.7x) rather than circular, so the strands splay wide
-; and low like a spider rather than spraying evenly in all directions -- a circular
-; ring puts two tentacles straight up, where in a corridor there is usually nothing
-; interesting to grab.
-;
-; Angles are sector centres: TAU*i/6 + TAU/12, so no shoulder sits exactly on an
-; axis and the six sectors tile the circle without a seam at zero. TentacleArray
-; re-derives the same angles for its search cones -- these markers are where the
-; strands are DRAWN from, the cone directions are computed.
-[node name="Shoulders" type="Node3D" parent="."]
+; These are the model's own socket nodes, so the point force is applied at and the point
+; the geometry grows out of are the same node and cannot drift apart. That is what
+; replaced the six hand-placed Marker3Ds this scene used to carry.
+[node name="Limbs" type="Node3D" parent="Rig"]
 unique_name_in_owner = true
 
-[node name="Shoulder0" type="Marker3D" parent="Shoulders"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6495, 0.2625, -0.35)
-
-[node name="Shoulder1" type="Marker3D" parent="Shoulders"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.525, -0.35)
-
-[node name="Shoulder2" type="Marker3D" parent="Shoulders"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6495, 0.2625, -0.35)
-
-[node name="Shoulder3" type="Marker3D" parent="Shoulders"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6495, -0.2625, -0.35)
-
-[node name="Shoulder4" type="Marker3D" parent="Shoulders"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.525, -0.35)
-
-[node name="Shoulder5" type="Marker3D" parent="Shoulders"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6495, -0.2625, -0.35)
+; The imported creature. A DONOR: the rig moves its torso and its eight chains out into
+; the two nodes above and then frees what is left, which is the empty glTF root and the
+; eight `_tip_target` empties -- frozen rest-pose markers that are actively misleading
+; once the tips are solved live.
+[node name="Model" parent="Rig" instance=ExtResource("3_model")]
 
 ; The strand lifecycle. A CHILD of the body, which fixes the update order: Godot
 ; runs _physics_process in tree order, so CrawlerBody writes this tick's transform
@@ -126,13 +94,15 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6495, -0.2625, -0.35)
 ; Godot stores the NodePath, fails to resolve it because the target is not in the
 ; tree yet, and leaves the property NULL WITH NO ERROR ANYWHERE -- the tentacles
 ; would simply never run and nothing would say so.
-[node name="Tentacles" type="Node3D" parent="." node_paths=PackedStringArray("body", "shoulders")]
+[node name="Tentacles" type="Node3D" parent="." node_paths=PackedStringArray("body", "shoulders", "rig")]
 script = ExtResource("4_tentacles")
 body = NodePath("..")
-shoulders = NodePath("../Shoulders")
+shoulders = NodePath("../Rig/Limbs")
+rig = NodePath("../Rig")
 
-; The drawing half. Reads the strand state above and turns it into geometry; applies
-; nothing, decides nothing. Listed after Tentacles so it builds this tick's curve
-; from this tick's state rather than last tick's.
-[node name="Ribbons" parent="." node_paths=PackedStringArray("tentacles") instance=ExtResource("5_ribbons")]
+; The posing half. Reads the strand state above and lays each chain along it; applies
+; nothing, decides nothing. Listed after Tentacles so it poses this tick's curve from
+; this tick's state rather than last tick's.
+[node name="Bones" parent="." node_paths=PackedStringArray("tentacles", "rig") instance=ExtResource("5_bones")]
 tentacles = NodePath("../Tentacles")
+rig = NodePath("../Rig")

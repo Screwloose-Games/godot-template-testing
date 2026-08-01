@@ -27,9 +27,9 @@ A `.gd` edit is not finished when it is written. It is finished when it parses a
   ```
   godot --headless --path <root> res://examples/3d/tentacle_crawler/tools/measure_crawl_response.tscn
   ```
-- Anything touching the ribbons, the materials, the lighting or the corridor generator must
-  re-run the capture tool **and actually look at the PNGs**. Every physics assertion in this
-  folder passes against a creature that renders as nothing at all.
+- Anything touching the bone poser, the model, the materials, the lighting or the corridor
+  generator must re-run the capture tool **and actually look at the PNGs**. Every physics
+  assertion in this folder passes against a creature that renders as nothing at all.
   ```
   godot --path <root> res://examples/3d/tentacle_crawler/tools/capture_crawler.tscn
   ```
@@ -62,12 +62,51 @@ directional light is outside the shell, so the shell occludes it completely: uni
 no form on anything, and a black creature that is genuinely invisible. It looks exactly like a
 broken material. Both lights here have shadows off, deliberately.
 
-**A degenerate triangle-strip stitch must repeat the PREVIOUS strand's last vertex, then the
-new strand's first.** Emitting the new strand's first vertex twice — the obvious reading of
-"insert two degenerates" — leaves one triangle with real area spanning from the end of one
-tentacle to the root of the next. It renders as a thin black sliver that reads as a graphics
-glitch rather than as a bug in your own function. `single_surface` on `TentacleRibbons` exists
-as a bisection switch: unstitched is the known-good shape.
+**A NON-UNIFORM PARENT SCALE TIMES A CHILD ROTATION IS A SHEAR, and nested bones compound
+it.** Godot composes a child's global basis as `parent.basis * child.basis`, so the squash on
+`%Hull` would skew every bone under it in proportion to how hard the creature happened to be
+heaving — worst at the exact moment you are looking at it — and down a 22-link chain that shear
+compounds as `s^k`. This is why `%Limbs` is a SIBLING of `%Hull` rather than a child, and why
+the poser puts its stretch in the link TRANSLATION and never in a bone scale.
+
+**A chain of 23 bones spans 22 links.** `_bone_00` sits ON its socket with a zero translation.
+Counting bones instead of links hands every strand a quarter-metre of reach it does not have,
+and the only symptom is tips stopping just short of their anchors — which reads as the solver
+being wrong rather than the arithmetic.
+
+**A `_vox_` cube's name CONTAINS `_bone_`.** `tentacle_00_bone_00_vox_0` matches a naive
+`_bone_` search, so walking a chain on that token alone steps out of the chain into a cube on
+the first hop and reports every tentacle as two links long. Nothing errors: a two-link chain
+poses perfectly well, it just does not reach.
+
+**Godot does NOT infer `vertex_color_use_as_albedo`.** The body and gullet carry their colour
+entirely as baked `COLOR_0` with no base colour factor at all, so straight out of the importer
+both surfaces render FLAT WHITE. The import is faithful; the flag simply is not inferred.
+`[rig]` asserts it rather than trusting it.
+
+**`nodes/import_as_skeleton_bones` does nothing without a `skins` array**, and this model has
+none. It will not turn the tentacle chains into a `Skeleton3D`. Do not spend an afternoon on it.
+
+**A `SpringArm3D` cannot be longer than the tube it is in.** The chase arm rides the body's own
+backward axis and the body rolls, so in an 8 m-tall corridor any tilt walks it into the ceiling:
+asking for 16 m measured an ACTUAL 4.6 m. `capture_crawler` prints hit-length against requested
+length, because "the camera is too close" and "the camera is fine and a wall is shortening it"
+are the same photograph.
+
+**A sector is fixed relative to whichever wall the creature is hugging.** The body's up-axis is
+solved to point away from the nearest wall, so a strand's search cone is pinned to that frame.
+A creature crawling along one wall therefore aims its far-side limbs across the whole tube
+forever — with short chains, those strands never plant once and the only symptom is "half the
+tentacles do not work".
+
+**Take the anchor at the strand's OWN working distance, not the nearest one.** Nearest-wins is
+the obvious rule and it starves short limbs: every strand prefers the same near wall, the long
+ones can reach it too and get there first, and `ANCHOR_MIN_SEPARATION` then locks the short ones
+out of the only band they can physically reach.
+
+**The editor resurrects deleted `.tscn` files.** A scene left in `.godot/editor/`'s
+`open_scenes` list is re-saved by the next `--import` run — with ABSOLUTE paths, which `[paths]`
+then fails on. Deleting a scene means clearing that list too.
 
 **`const X: PackedStringArray = PackedStringArray([...])` is not a constant expression.** It is
 a parse error with no line of context beyond the constant's name. Use `Array[String]`.
@@ -161,8 +200,12 @@ fails with `Could not find type`. The same run is what generates the `.uid` side
   camera. The rig that takes the mouse and the rig that defines forward are the same flag on
   purpose. With no director wired the marker falls back to its own frame, which is the state
   every tool and both suites run in — a change to the drive frame will not show up there.
-- **`TentacleRibbons` reads state and writes geometry.** It must not contain `apply_`, `Input.`
-  or `intersect_ray`, and `[input]` asserts that too.
+- **`TentacleBones` reads state and writes transforms.** It must not contain `apply_`, `Input.`
+  or `intersect_ray`, and `[input]` asserts that too. It owns the Bezier and the anchor pads;
+  it decides nothing about where a strand goes.
+- **`CrawlerRig` owns the model's shape and nothing else.** It runs once at `_ready`, splits the
+  import across `%Hull` and `%Limbs`, and then does no per-tick work at all. It is also the only
+  file that knows the model's node names.
 - **`TentacleTuning` and `CrawlerMath` have no engine dependencies at all** — the same contract
   as cargo_tether's `TetherWinch`. The solver, the renderer and the verifier read one copy of
   every predicate instead of three files spelling `0.25`.

@@ -25,10 +25,10 @@ script = ExtResource("1_rig")
 [node name="SpringArm" type="SpringArm3D" parent="."]
 unique_name_in_owner = true
 collision_mask = 1
-spring_length = 5.5
+spring_length = 12.0
 margin = 0.3
 
 [node name="Camera" type="Camera3D" parent="SpringArm"]
 unique_name_in_owner = true
-fov = 62.0
+fov = 70.0
 far = 400.0

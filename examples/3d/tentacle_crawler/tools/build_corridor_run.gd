@@ -34,7 +34,8 @@ const JITTER: float = 0.22
 ## How many neighbours each side the half-extents are averaged over. At RING_STEP 2
 ## this makes every width change a ~12 m taper, with no explicit taper segments.
 const SMOOTH_RADIUS: int = 3
-## Refuse to emit anything the creature cannot fit down. body_radius is 1.2.
+## Refuse to emit anything the creature cannot fit down. A HALF-EXTENT, like `w` and
+## `h` below, so 2.2 is a 4.4 m-wide corridor against a body_radius of 1.5.
 const MIN_CLEARANCE: float = 2.2
 ## Below this, a bend's inner wall self-intersects at these widths and opens a HOLE
 ## in the shell. The creature then rays straight through the gap, anchors outside the
