@@ -335,7 +335,7 @@ def test_format_report_includes_the_fix():
 # The real-export fixture
 #
 # test-fixtures/unapplied_rotation_90z.gltf is the committed export of
-# assets/3d/example_cubes_facing before the rotation was applied in Blender. It
+# assets/art/3d/example_cubes_facing before the rotation was applied in Blender. It
 # is kept verbatim because it is the case that motivated this check: a real
 # Blender 4.3 export whose object still carried a 90 degree Z rotation.
 #

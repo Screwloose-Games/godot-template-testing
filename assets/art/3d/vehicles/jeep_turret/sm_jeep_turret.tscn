@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://dbnlpkbglhypl"]
+
+[ext_resource type="PackedScene" uid="uid://bssqwg5tkirgv" path="res://assets/art/3d/vehicles/jeep_turret/sm_jeep_turret.gltf" id="1_model"]
+
+[node name="sm_jeep_turret" unique_id=635018282 instance=ExtResource("1_model")]
+
+[node name="mk_muzzle" type="Marker3D" parent="jeep_turret_root/turret_yaw/turret_pitch" parent_id_path=PackedInt32Array(1818609530) index="2" unique_id=737036268]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.08)
+
+[node name="mk_gunner_station" type="Marker3D" parent="jeep_turret_root/turret_yaw" parent_id_path=PackedInt32Array(641289871) index="2" unique_id=315941281]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.62, 0.3)
+
+[node name="mk_seat_driver" type="Marker3D" parent="jeep_turret_root" parent_id_path=PackedInt32Array(611924973) index="11" unique_id=1839965459]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.34, 0.8, -0.02)
+
+[node name="mk_seat_passenger" type="Marker3D" parent="jeep_turret_root" parent_id_path=PackedInt32Array(611924973) index="12" unique_id=1548511168]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.34, 0.8, -0.02)
+
+[node name="mk_headlight_l" type="Marker3D" parent="jeep_turret_root" parent_id_path=PackedInt32Array(611924973) index="13" unique_id=1040798350]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.44, 0.82, -1.735)
+
+[node name="mk_headlight_r" type="Marker3D" parent="jeep_turret_root" parent_id_path=PackedInt32Array(611924973) index="14" unique_id=122770259]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.44, 0.82, -1.735)
+
+[node name="mk_exhaust" type="Marker3D" parent="jeep_turret_root" parent_id_path=PackedInt32Array(611924973) index="15" unique_id=210192511]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.77, 0.46, 1.64)
+
+[node name="mk_steering_axis" type="Marker3D" parent="jeep_turret_root" parent_id_path=PackedInt32Array(611924973) index="16" unique_id=79778729]
+transform = Transform3D(1, 0, 0, 0, 0.6617, 0.7499, 0, -0.7499, 0.6617, -0.36, 1.14, -0.4)

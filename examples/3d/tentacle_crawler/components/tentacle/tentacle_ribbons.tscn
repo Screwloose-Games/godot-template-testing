@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://ddx7w7up5r1ws"]
+
+[ext_resource type="Script" path="res://examples/3d/tentacle_crawler/components/tentacle/tentacle_ribbons.gd" id="1_ribbons"]
+[ext_resource type="Material" path="res://examples/3d/tentacle_crawler/materials/anchor_pad.tres" id="2_pad"]
+
+[node name="TentacleRibbons" type="MeshInstance3D" unique_id=91259746]
+script = ExtResource("1_ribbons")
+
+[node name="AnchorPads" type="MultiMeshInstance3D" parent="." unique_id=1880442560]
+unique_name_in_owner = true
+material_override = ExtResource("2_pad")
+cast_shadow = 0

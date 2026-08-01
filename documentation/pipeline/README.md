@@ -88,13 +88,13 @@ bottom of `PIPELINE.md`. They are recorded rather than silently resolved because
 guessing would bake a wrong answer into CI.
 
 The asset root, the facing-direction axis and the three competing texture naming
-conventions have all since been decided — `assets/3d/` for 3D with `game/` kept
+conventions have all since been decided — `assets/art/3d/` for 3D with `assets/art/2d/` kept
 as the 2D root, +Y forward in Blender becoming **−Z** in the exported glTF, and
 `t_{asset_name}_{descriptor}` for textures. What remains open is only when
 existing exporter-named textures migrate.
 
 The +Y→−Z mapping was measured against a real export rather than reasoned about:
-`assets/3d/example_cubes_facing` is a cube with a nub, the nub sits on Blender
+`assets/art/3d/example_cubes_facing` is a cube with a nub, the nub sits on Blender
 +Y, and it lands on −Z in `sm_example_cubes_facing.gltf`. −Z is also Godot's
 forward (`Vector3.FORWARD`), so the artist habit and the engine agree and
 neither had to change. This deliberately does not match the glTF spec's own

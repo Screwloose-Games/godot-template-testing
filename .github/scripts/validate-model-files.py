@@ -2,7 +2,7 @@
 #
 # Run this with: python .github/scripts/validate-model-files.py --all
 # (positional args also work, and are how pre-commit and the Claude Code hook
-# call it: ... validate-model-files.py assets/3d/barrel/sm_barrel.gltf)
+# call it: ... validate-model-files.py assets/art/3d/barrel/sm_barrel.gltf)
 #
 # This is the pass/fail authority for 3D models. The Docker image in
 # tools/gltf-validator/ still renders the nine-view preview that goes in the PR
@@ -42,7 +42,7 @@ SKELETAL_FILENAME_PATTERN = re.compile(r"^sk_[a-z0-9]+(_[a-z0-9]+)*\.gltf$")
 # whole point is to answer "is this loop fun?" without adopting shared
 # conventions, and its third-party art (grey-wolf-gaits-and-jump.glb) would fail
 # every naming rule here.
-MODEL_ROOT = "assets/3d"
+MODEL_ROOT = "assets/art/3d"
 
 # Directories that never get validated, in any mode.
 # test-fixtures holds a deliberately broken model -- unapplied_rotation_90z.gltf
@@ -244,7 +244,7 @@ def sweep_repository():
 
 
 def check_filename(report, path):
-    """Names under assets/3d/ follow the sm_/sk_ convention."""
+    """Names under assets/art/3d/ follow the sm_/sk_ convention."""
     if not ENFORCE_FILENAME_CONVENTION:
         return
     name = os.path.basename(path)

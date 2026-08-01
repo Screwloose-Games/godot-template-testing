@@ -64,17 +64,36 @@ back and keeps writhing in place.
 distance it pulls nothing at all, which is why the creature visibly trails rather
 than wearing the marker like a cursor.
 
-**Tentacles do the moving.** Eight strands cycle
-`SEARCHING → REACHING → PLANTED ⇄ PULLING → RELEASING`. Each hunts in its own
-sector of a cone opened around the direction the body is *travelling* — not where
-its nose points, which is what lets it turn a corner instead of grinding into one.
-A planted strand pulls steadily; a stroking one adds a raised-cosine impulse worth
-`22 × 0.34 × 0.5 = 3.74 m/s` of Δv.
+**Tentacles do the moving, two at a time.** Eight strands cycle
+`SEARCHING → REACHING → PLANTED → PULLING → RELEASING`, and above that sits a gait
+that moves them in *pairs*. Two limbs shoot forward one after the other, both plant,
+both haul on the same tick, and the creature lunges. Each hunts in its own sector of
+a cone opened around the direction the body is *travelling* — not where its nose
+points, which is what lets it turn a corner instead of grinding into one. One lunge
+is a raised-cosine impulse worth `2 × 38 × 0.30 × 0.5 × along² ≈ 6.8 m/s` of Δv.
 
-**The ratchet is one line.** Gripping but not hauling triples the body's drag, so
-between strokes it nearly stops and each stroke is a visible lurch. Pulse, glide,
-pulse. Delete `brake_multiplier` and every test still passes — the creature just
-glides everywhere and stops being a creature.
+A strand strokes **once** per grip. It does not decide to; the gait tells it to, and
+tells its partner on the same tick. That is the whole difference between this and a
+continuous haul — eight limbs pulling on private timers average out into a smooth
+drag no matter how the numbers are set.
+
+**Pairs are opposed, and chosen fresh each lunge.** The two members sit at least a right
+angle apart on the sector ring, so their lateral pulls cancel and the sum is forward —
+two anchors on the same side would throw the creature at that wall. The pair is picked
+from whichever strands are idle rather than fixed in advance: permanent couples deadlock,
+because four grips can land one in each couple and then no couple has both members free.
+
+**Idle limbs trail backward.** A searching strand streams behind the body instead of
+casting around for a grip. Six of eight strands are idle at any moment, so when they
+hunted forwards they drowned out the two that were actually reaching, and the gait read
+as flailing. Forward now only ever means "this limb is reaching".
+
+**The pulse is the gait, not the drag.** A burst, then a deliberate ballistic glide
+of at least `GLIDE_MIN` while the next pair is already flying forward. The spent pair
+stays stuck to the wall through all of it and pays out behind the body until it is
+about a metre back, then lets go. `brake_multiplier` used to supply the pulse by
+tripling drag between strokes; it now sits at 1.0, because braking through the coast
+destroys exactly the phase the gait exists to produce.
 
 **It knows the world only through raycasts.** A 14-ray fan for walls, a cone for
 anchors, one ray ahead for the corner peek. It never reads the corridor's
@@ -91,9 +110,11 @@ correct its joint angles are.
 **Limbs are not interchangeable.** The model's chains run from 14 bones to 23, so each
 strand carries its own reach (4.4 m to 7.5 m) and its own search sector, both solved at
 `_ready` from the geometry rather than from an index. Two consequences are worth
-knowing: a strand prefers anchors at *its own* working distance rather than the nearest
-one — otherwise the long limbs camp the near wall and the short ones can never get past
-them — and a strand that keeps failing widens its search rather than starving politely.
+knowing: a strand reaches as far as it physically can rather than taking the nearest
+hit — the search sweeps its cone open from the inside and keeps the farthest thing it
+finds, which is what "full stretch" means here — and a strand that keeps failing widens
+its search rather than starving politely. Measured mean is 79% of a strand's own reach;
+the remainder is geometry, not the solver settling.
 
 ## Measured numbers
 
@@ -103,27 +124,33 @@ chosen** — retune anything and re-run it, then update this table or delete it.
 The harness unwires the camera and drives the marker in its own frame, dead level.
 In play forward comes off the orbit rig, so a purely cosmetic change to where that
 rig rests would otherwise tilt the drive and rewrite this table; what is measured
-here is the leash, the drag and the stroke ratchet, not the framing.
+here is the leash, the drag and the lunge cadence, not the framing.
 
 | | idle (marker parked) | driven (forward held) |
 |---|---|---|
-| travelled | 0.00 m in 8 s | 36.61 m in 8 s (4.58 m/s) |
-| speed | 0.00 m/s | 0.01 – 23.81 m/s, mean 5.12 |
-| marker separation | 4.00 m, dead steady | 2.84 – 24.74 m, mean 7.17 |
-| strokes | 2 in 8 s | 10 in 8 s (0.80 s apart) |
-| planted | 4–5 for 99% of the time | 2–5 for 89% |
+| travelled | 0.00 m in 8 s | 36.49 m in 8 s (4.56 m/s) |
+| speed | 0.00 m/s | 0.02 – 25.32 m/s, mean 5.33 |
+| marker separation | 4.00 m, dead steady | 1.78 – 22.40 m, mean 6.47 |
+| lunges | 0 in 8 s | 13 in 8 s (0.62 s apart) |
+| planted | 4 for 91% of the time | 3–4 for 59% |
 
-Idle separation settling to exactly 4.00 m is the leash slack, and it is the point:
-the creature holds station rather than creeping past the marker.
+The **lunges** row counts bursts, not per-strand strokes — two strands haul on the same
+tick, so one entry here is one whole pull of the creature.
+
+**The idle creature no longer strains in place**, which used to be a listed trade-off.
+It falls out of the gait rather than being handled: a cycle only starts when a pair is
+free, and a pair only becomes free when a spent one has been outrun and let go. Standing
+still, nothing is ever outrun, so the creature simply holds its four grips. Parked, it
+grips; driven, it lunges. Separation settling to exactly 4.00 m is the leash slack.
 
 On the generated course it covers **97% of 244 m** with a minimum wall clearance of
-1.96 m and never once leaves the shell.
+2.14 m and never once leaves the shell.
 
 The peak speed is the marker's, not the creature's own: at `move_speed` 27 m/s the
 leash is what supplies the lurch, and `leash_max_accel / body_drag` is the real ceiling
 on how fast this thing can ever go. The mean is grip-limited instead — the creature
-cannot pull faster than its tentacles cycle, which is what keeps the ratchet readable
-at speed.
+cannot pull faster than its pairs cycle, which is what keeps the lunge readable at
+speed.
 
 ## Layout
 
@@ -185,17 +212,19 @@ godot --path <root> res://examples/3d/tentacle_crawler/tools/capture_crawler.tsc
   it is also why the camera's `SpringArm3D` can never catch on it.
 - **Both directional lights have shadows off.** A sealed tube lit by a light from
   outside is entirely in shadow, and the interior renders at ambient only.
-- **Retune in this order:** `stroke_gain` → `body_drag` → `brake_multiplier` →
-  `fire_interval`, and `leash_slack` **last** — it sets both the trailing distance
+- **Retune in this order:** `stroke_gain` → `body_drag` → `GLIDE_MIN` →
+  `PULL_HANDOFF`, and `leash_slack` **last** — it sets both the trailing distance
   and the point at which the creature decides it has arrived, so it moves two
-  feelings at once.
+  feelings at once, and `[lag]` asserts against it directly. Reach for
+  `drive_distance` instead when the creature overshoots.
 
 ## Known trade-offs
 
-- **The idle creature strokes without moving.** At rest the strands still grip and
-  heave; the drive is gated to zero, so nothing comes of it. It reads as straining
-  in place, which suits the thing, but the animation and the motion are honestly
-  decoupled in that one state.
+- **Idle limbs trail; they do not hunt.** A searching strand streams backward along the
+  body rather than casting about for a grip, so a parked creature reads as poised rather
+  than busy. That is deliberate — six of eight strands are idle at any moment, and when
+  they waved forward they drowned out the two that were actually reaching — but it does
+  mean the creature looks less curious than it is.
 - **The wall push-off now centres, deliberately.** `probe_comfort` sits above the
   corridor's half-height, so the push comes from every side at once and the creature
   runs down the middle. That is a gait decision, not a comfort one: the body rolls so

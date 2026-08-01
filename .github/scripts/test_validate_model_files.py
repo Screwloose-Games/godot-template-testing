@@ -39,7 +39,7 @@ validate_model_files = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(validate_model_files)
 vmf = validate_model_files
 
-EXAMPLE = "assets/3d/example_cubes_facing/sm_example_cubes_facing.gltf"
+EXAMPLE = "assets/art/3d/example_cubes_facing/sm_example_cubes_facing.gltf"
 FIXTURE = "tools/gltf-validator/test-fixtures/unapplied_rotation_90z.gltf"
 
 
@@ -100,8 +100,8 @@ def test_the_naming_regexes_match_the_documented_examples():
 
 
 def test_a_bad_name_under_the_model_root_fails():
-    report = vmf.ModelReport("assets/3d/barrel/rain-barrel.gltf")
-    vmf.check_filename(report, "assets/3d/barrel/rain-barrel.gltf")
+    report = vmf.ModelReport("assets/art/3d/barrel/rain-barrel.gltf")
+    vmf.check_filename(report, "assets/art/3d/barrel/rain-barrel.gltf")
     assert report.failed, report
 
 
@@ -110,15 +110,15 @@ def test_a_bad_name_outside_the_model_root_is_only_noted():
     path = "examples/3d/x/grey-wolf-gaits-and-jump.glb"
     report = vmf.ModelReport(path)
     vmf.check_filename(report, path)
-    assert not report.failed, "naming must not be enforced outside assets/3d/"
+    assert not report.failed, "naming must not be enforced outside assets/art/3d/"
 
 
 def test_the_switch_turns_the_name_check_off():
     original = vmf.ENFORCE_FILENAME_CONVENTION
     vmf.ENFORCE_FILENAME_CONVENTION = False
     try:
-        report = vmf.ModelReport("assets/3d/barrel/rain-barrel.gltf")
-        vmf.check_filename(report, "assets/3d/barrel/rain-barrel.gltf")
+        report = vmf.ModelReport("assets/art/3d/barrel/rain-barrel.gltf")
+        vmf.check_filename(report, "assets/art/3d/barrel/rain-barrel.gltf")
         assert report.checks == [], "a disabled check should record nothing"
     finally:
         vmf.ENFORCE_FILENAME_CONVENTION = original

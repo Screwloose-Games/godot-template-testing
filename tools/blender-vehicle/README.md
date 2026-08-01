@@ -4,7 +4,7 @@ Builds engine-ready vehicles in Blender from a Python description, bakes a textu
 atlas, and exports a glTF that passes `.github/scripts/validate-model-files.py`
 without a manual step anywhere in the chain.
 
-Built while making `assets/3d/vehicles/jeep_turret` (14,720 tris, 1.900 × 2.140 ×
+Built while making `assets/art/3d/vehicles/jeep_turret` (14,720 tris, 1.900 × 2.140 ×
 3.807 m, one 2048 atlas, 8 convex collision proxies, turret and wheel rig). This
 document is the retrospective from that build: what was slow, what had to be
 redone, and what is now automated so it does not have to be redone again.

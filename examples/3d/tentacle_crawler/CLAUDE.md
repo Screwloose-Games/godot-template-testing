@@ -104,6 +104,86 @@ the obvious rule and it starves short limbs: every strand prefers the same near 
 ones can reach it too and get there first, and `ANCHOR_MIN_SEPARATION` then locks the short ones
 out of the only band they can physically reach.
 
+**FIXED PAIRS DEADLOCK.** Grouping the eight strands into four permanent couples is tidy,
+deterministic and easy to assert against — and a couple can only fire when BOTH its members
+are idle. Four strands are gripping at any moment and nothing stops them landing one in each
+couple, at which point every couple is blocked and the gait stops until a grip happens to
+expire. Measured: 10 lunges in 8 s fell to 6, with the creature hanging on nothing for 0.78 s.
+Pair dynamically among the free strands; opposition is a property of the pair you pick, not
+of having picked it in advance.
+
+**Calling a release routine on something already releasing restarts it.** `_begin_release`
+sets `_extend = 1.0`, so invoking it every tick on a RELEASING strand pins the retraction at
+full extension forever: the strand never reaches SEARCHING, whatever is waiting on it never
+proceeds, and the whole gait livelocks behind one limb. Nothing errors, and the phase string
+looks plausible the entire time.
+
+**Six idle limbs beat two working ones, visually.** The searching flail used to orbit each
+shoulder at a polar angle measured off the TRAVEL axis, i.e. forwards. With two strands
+reaching and six waving in roughly the same direction, the gait was reported as "the tentacles
+are flailing" when the gait itself was measurably correct — anchors on walls, forward, paired,
+hauling. The eye could not find the two that mattered. Idle limbs now stream BACKWARD, which
+costs nothing and leaves forward meaning exactly one thing.
+
+**A reach-forward rule belongs in the OBJECTIVE, not in the predicate.** Scaling
+`FORWARD_BIAS_MIN` by the strand's own reach looks like the obvious way to stop long limbs
+gripping sideways. It is a trap: a limb gripping a wall `c` to the side at polar angle `t`
+reaches `c / sin(t)` and lands only `c / tan(t)` ahead, so demanding more distance ahead forces
+a narrower angle, which demands more reach than the strand has. At a 0.45 fraction the shortest
+chain needed 4.46 m against the 4.4 m it owns and took zero anchors in 8 s; total anchors fell
+from 23 to 8. Maximising the forward component in the search instead rejects nothing.
+
+**"Farthest anchor" and "furthest forward anchor" are different limbs.** A search that
+maximises raw distance prefers the near-perpendicular ray every time, because that is much the
+cheapest route to a lot of distance. It passes every assertion in this folder and looks like
+waving.
+
+**Retire by POSITION, not by age.** A grip planted early and still well in front of the body
+has not finished its job; one planted a moment ago on a wall already shot past is dead weight.
+Trimming the oldest let go of limbs still 3 m ahead — `[release-behind]` measured a +3.05 m
+median release depth, i.e. the propelling pair cut loose while still reaching.
+
+**A guard against dropping the last grips will silently disable the release rule it sits in
+front of.** "Never release while only the pair is planted and nothing is inbound" reads as a
+safety net; a strand is only REACHING for a couple of tenths, so in practice it blocks the soft
+rule almost always and limbs trail until the -3.5 m deadlock hatch collects them. Gate it on
+one remaining grip, not on the pair size, or the second of a spent pair gets stranded after the
+first leaves and the release depths come out bimodal.
+
+**Bounding the planted count by retiring the spent pair eagerly DELETES the gait's back
+half.** Releasing the old grips the moment a fresh pair takes over is the obvious way to keep
+the count under the ceiling, and it is a behaviour change wearing a bookkeeping change's
+clothes: the propelling limbs are supposed to stay stuck to the wall and pay out behind the
+body until they are about a metre back. Measured, the eager version released at a mean of
+0.05 m — level with the body — which reads as the limbs popping off rather than being outrun.
+Trim only the SURPLUS above the ceiling, oldest first, and leave `RELEASE_BEHIND` in charge of
+the normal case. `[release-behind]` exists to catch exactly this and asserts the mean depth,
+because the creature still crawls perfectly well while getting it wrong.
+
+**A ceiling enforced before `_update_tips` is enforced a tick late.** `_update_tips` is what
+turns REACHING into PLANTED, so a trim that runs earlier in the same tick cannot see the two
+grips that tick just created. The count then overshoots for exactly one frame — invisible to
+a per-interval sampler, and caught immediately by the per-tick one. Order matters more than
+the trim does.
+
+**A "currently hauling" exemption set has to be PRUNED, not just written.** Anything the
+retirement pass skips must stop being skipped when the burst ends. A strand left in that set
+is exempt from the ceiling permanently, and the symptom is a planted count that creeps one
+over and stays there — which looks like an off-by-one in the ceiling rather than a stale set.
+
+**A search that sweeps in equal angles quantises away the thing it is maximising.** Ray
+distance in a tube goes as `clearance / sin(angle)`, so near the angle where a wall first
+comes into range one step overshoots the strand's reach and misses while the next lands well
+inside it. Everything between is reach that was available and not taken: at 7 sweep steps the
+mean came out at 75% of reach, at 16 it was 79%. Carry the farthest hit and keep sweeping
+until one clears the band rather than returning the first thing found.
+
+**"Nothing is gripping" is a legitimate state for a lunging creature, and asserting a floor of
+one grip fails honestly.** The spent pair hangs on until it has trailed behind, and the fresh
+pair is still in flight when it lets go, so there is a real intended moment mid-lunge with
+nothing attached. Bound how LONG it may hold nothing (0.13 s measured, 0.35 s asserted), not
+whether it ever does.
+
 **The editor resurrects deleted `.tscn` files.** A scene left in `.godot/editor/`'s
 `open_scenes` list is re-saved by the next `--import` run — with ABSOLUTE paths, which `[paths]`
 then fails on. Deleting a scene means clearing that list too.
@@ -228,8 +308,17 @@ fails with `Could not find type`. The same run is what generates the `.uid` side
   is exactly a leash-length behind the marker; a ramp measured from zero commands full drive at
   that distance, so it hauls, overshoots, gets pulled back and hauls again — a limit cycle on a
   player who is not touching the controls.
-- **`brake_multiplier` is the entire "drags itself" read**, not a comfort feature. Every
-  assertion in the suite still passes with it at 1.0; the creature just glides.
+- **The pulse comes from the GAIT, not from `brake_multiplier`.** That was true of the old
+  continuous haul — tripling drag between strokes was the entire "drags itself" read, and at
+  1.0 the creature just glided. The pair-lunge gait inverts it: the pulse is a synchronised
+  two-strand burst followed by a deliberate `GLIDE_MIN` of ballistic coast, and braking
+  through the coast destroys the phase the gait exists to produce. `brake_multiplier` now
+  ships at 1.0 and is kept only as the lever for a heavier variant.
+- **A strand strokes ONCE per grip, and never on its own initiative.** `_age_strands` has no
+  `PLANTED → PULLING` edge; `TentacleArray._advance_cycle` grants PULLING to a whole pair on
+  one tick. Restoring a per-strand stroke timer re-creates the continuous haul no matter what
+  the gains are set to — eight limbs pulling out of phase average out, which is exactly what
+  a lunge must not do.
 - **The `CREATURE` collision bit is reserved and deliberately unoccupied.** `[layers]` fails if
   anything claims it, which is how the next person finds out the body is kinematic on purpose
   before they change it.

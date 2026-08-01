@@ -36,7 +36,7 @@ FINAL = True
 # apart -- the numbers the validator checks are the numbers the model is built to.
 SPEC = {
     "stem": "jeep_turret",
-    "asset_dir": "assets/3d/vehicles/jeep_turret",
+    "asset_dir": "assets/art/3d/vehicles/jeep_turret",
     "model_file": "sm_jeep_turret.gltf",
     "blend_file": "jeep_turret.blend",
     "target_w_h_d": (1.9, 2.1, 3.8),      # glTF axes; see audit.dimensions

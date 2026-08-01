@@ -32,7 +32,7 @@ body:
         Provide the full filepath where the animated model should be saved. This
         is an animation issue, not a texture one -- the path is the .gltf, and it
         sits in the object's own directory. See documentation/file-naming-spec.md.
-      placeholder: "Enter the full file path... assets/3d/{category}/{object_name}/sk_{object_name}.gltf"
+      placeholder: "Enter the full file path... assets/art/3d/{category}/{object_name}/sk_{object_name}.gltf"
     validations:
       required: true
 
@@ -44,8 +44,8 @@ body:
         - [ ] The animations file name contains the prefix "anim_", is all lowercase, and is underscore separated, i.e. "anim_{model_name}.blend"
         - [ ] When adding animations, looping animations should be tagges as "-loop"
         - [ ] The model is saved in `.blend` file format.
-        - [ ] The model is saved to the specified filepath: `assets/3d/{category}/{object_name}/anim_{model_name}.blend`.
-        - [ ] The model is exported as gltf to the specified filepath: `assets/3d/{category}/{object_name}/anim_{model_name}.gltf`.
+        - [ ] The model is saved to the specified filepath: `assets/art/3d/{category}/{object_name}/anim_{model_name}.blend`.
+        - [ ] The model is exported as gltf to the specified filepath: `assets/art/3d/{category}/{object_name}/anim_{model_name}.gltf`.
         - [ ] A pull request (PR) is created with the changes.
   
   - type: textarea
@@ -58,8 +58,8 @@ body:
         - [ ] The animations file name contains the prefix "anim_", is all lowercase, and is underscore separated, i.e. "anim_{model_name}.blend"
         - [ ] When adding animations, looping animations should be tagges as "-loop"
         - [ ] The model is saved in `.blend` file format.
-        - [ ] The model is saved to the specified filepath: `assets/3d/{category}/{object_name}/anim_{model_name}.blend`.
-        - [ ] The model is exported as gltf to the specified filepath: `assets/3d/{category}/{object_name}/anim_{model_name}.gltf`.
+        - [ ] The model is saved to the specified filepath: `assets/art/3d/{category}/{object_name}/anim_{model_name}.blend`.
+        - [ ] The model is exported as gltf to the specified filepath: `assets/art/3d/{category}/{object_name}/anim_{model_name}.gltf`.
         - [ ] A pull request (PR) is created with the changes.
 
         [Pull Request Guide: Github]("https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request")

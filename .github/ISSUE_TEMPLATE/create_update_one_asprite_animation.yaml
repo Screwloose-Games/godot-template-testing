@@ -28,8 +28,8 @@ body:
     attributes:
       label: Save File Path
       description: Provide the directory path where the .aseprite file is located or should be saved.
-      placeholder: "Enter the full file path, e.g., game/{game_object}/{game_object}/animations..."
-      value: "game/{sub_directory}/{game_object}/{game_object}.aseprite"
+      placeholder: "Enter the full file path, e.g., assets/art/2d/{game_object}/{game_object}/animations..."
+      value: "assets/art/2d/{sub_directory}/{game_object}/{game_object}.aseprite"
     validations:
       required: true
 
@@ -38,7 +38,7 @@ body:
       value: |
         ## Acceptance Criteria:
 
-        - [ ] An .aseprite file is created or updated and saved in the correct directory: `game/{sub_directory}/{game_object}/{game_object}.aseprite`.
+        - [ ] An .aseprite file is created or updated and saved in the correct directory: `assets/art/2d/{sub_directory}/{game_object}/{game_object}.aseprite`.
         - [ ] The specified animation is added or updated as a tag in the .aseprite file.
         - [ ] Tags for one-shot animations are configured with `repeat: 1`.
         - [ ] Files follow naming conventions: lowercase, underscore-separated, no spaces.
@@ -56,7 +56,7 @@ body:
         - [ ] Create or update the .aseprite file with the specified animation.
         - [ ] Add the animation as a tag in the .aseprite file.
         - [ ] Configure one-shot tags with `repeat: 1` where applicable.
-        - [ ] Ensure the .aseprite file is saved in the correct directory: `game/{sub_directory}/{game_object}/{game_object}.aseprite`.
+        - [ ] Ensure the .aseprite file is saved in the correct directory: `assets/art/2d/{sub_directory}/{game_object}/{game_object}.aseprite`.
         - [ ] Ensure files follow naming conventions: lowercase, underscore-separated, no spaces.
         - [ ] Submit a pull request with the updated .aseprite file, `.import` file (if Godot generates one), and all changes.
 

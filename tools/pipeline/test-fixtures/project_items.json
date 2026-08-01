@@ -1,0 +1,474 @@
+{
+  "_comment": [
+    "Hand-trimmed recording in the shape --dump-json writes, used by",
+    "test_asset_report.py so the tests never touch the network.",
+    "`filepath` on the real board is an ORGANIZATION ISSUE FIELD, so its value",
+    "arrives in the issue's issueFieldValues, not in the project item's",
+    "fieldValues -- issue #5 below is modelled that way. Issue #3 instead puts",
+    "the value in a plain project column, covering a board configured the other",
+    "way round. It also deliberately contains a blank column, a {placeholder}",
+    "template, prose in place of a path, a draft with and without a path, a",
+    "board item that is itself a pull request, a column holding two paths, an",
+    "item from a different repository, and a hasNextPage boundary."
+  ],
+  "pages": [
+    {
+      "organization": {
+        "projectV2": {
+          "title": "Asset Pipeline",
+          "url": "https://github.com/orgs/Screwloose-Games/projects/38",
+          "fields": {
+            "nodes": [
+              {
+                "id": "F_title",
+                "name": "Title",
+                "dataType": "TITLE"
+              },
+              {
+                "id": "F_status",
+                "name": "Status",
+                "dataType": "SINGLE_SELECT"
+              },
+              {
+                "id": "F_path",
+                "name": "filepath",
+                "dataType": "TEXT"
+              }
+            ]
+          },
+          "items": {
+            "totalCount": 9,
+            "pageInfo": {
+              "hasNextPage": true,
+              "endCursor": "CURSOR_PAGE_1"
+            },
+            "nodes": [
+              {
+                "id": "PVTI_delivered",
+                "type": "ISSUE",
+                "fieldValues": {
+                  "nodes": [
+                    {
+                      "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                      "name": "Done",
+                      "field": {
+                        "name": "Status"
+                      }
+                    }
+                  ]
+                },
+                "content": {
+                  "__typename": "Issue",
+                  "number": 5,
+                  "title": "Create 3D model for rain_barrel",
+                  "url": "https://github.com/Screwloose-Games/back-in-the-game-jam/issues/5",
+                  "state": "CLOSED",
+                  "repository": {
+                    "nameWithOwner": "Screwloose-Games/back-in-the-game-jam"
+                  },
+                  "assignees": {
+                    "nodes": [
+                      {
+                        "login": "artist-one"
+                      }
+                    ]
+                  },
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "3d model"
+                      }
+                    ]
+                  },
+                  "closedByPullRequestsReferences": {
+                    "nodes": [
+                      {
+                        "number": 14,
+                        "url": "https://github.com/Screwloose-Games/back-in-the-game-jam/pull/14",
+                        "state": "MERGED",
+                        "merged": true,
+                        "mergedAt": "2026-07-10T00:00:00Z",
+                        "headRefOid": "aaaa111",
+                        "repository": {
+                          "nameWithOwner": "Screwloose-Games/back-in-the-game-jam"
+                        }
+                      }
+                    ]
+                  },
+                  "timelineItems": {
+                    "nodes": []
+                  },
+                  "issueFieldValues": {
+                    "nodes": [
+                      {
+                        "__typename": "IssueFieldTextValue",
+                        "value": "assets/art/3d/props/rain_barrel/sm_rain_barrel.gltf",
+                        "field": {
+                          "name": "filepath"
+                        }
+                      },
+                      {
+                        "__typename": "IssueFieldSingleSelectValue",
+                        "name": "High",
+                        "field": {
+                          "name": "Priority"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "PVTI_blank",
+                "type": "ISSUE",
+                "fieldValues": {
+                  "nodes": [
+                    {
+                      "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                      "name": "Todo",
+                      "field": {
+                        "name": "Status"
+                      }
+                    }
+                  ]
+                },
+                "content": {
+                  "__typename": "Issue",
+                  "number": 2,
+                  "title": "Create 3D model for player_character",
+                  "url": "https://github.com/Screwloose-Games/back-in-the-game-jam/issues/2",
+                  "state": "OPEN",
+                  "repository": {
+                    "nameWithOwner": "Screwloose-Games/back-in-the-game-jam"
+                  },
+                  "assignees": {
+                    "nodes": [
+                      {
+                        "login": "Anticdope"
+                      }
+                    ]
+                  },
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "3d model"
+                      }
+                    ]
+                  },
+                  "closedByPullRequestsReferences": {
+                    "nodes": []
+                  },
+                  "timelineItems": {
+                    "nodes": []
+                  },
+                  "issueFieldValues": {
+                    "nodes": []
+                  }
+                }
+              },
+              {
+                "id": "PVTI_placeholder",
+                "type": "ISSUE",
+                "fieldValues": {
+                  "nodes": []
+                },
+                "content": {
+                  "__typename": "Issue",
+                  "number": 7,
+                  "title": "Create 3D model for lamp_post",
+                  "url": "https://github.com/Screwloose-Games/back-in-the-game-jam/issues/7",
+                  "state": "OPEN",
+                  "repository": {
+                    "nameWithOwner": "Screwloose-Games/back-in-the-game-jam"
+                  },
+                  "assignees": {
+                    "nodes": []
+                  },
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "3d model"
+                      }
+                    ]
+                  },
+                  "closedByPullRequestsReferences": {
+                    "nodes": []
+                  },
+                  "timelineItems": {
+                    "nodes": []
+                  },
+                  "issueFieldValues": {
+                    "nodes": [
+                      {
+                        "__typename": "IssueFieldTextValue",
+                        "value": "assets/art/3d/{category}/{object_name}/sm_{object_name}.gltf",
+                        "field": {
+                          "name": "filepath"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "PVTI_draft_blank",
+                "type": "DRAFT_ISSUE",
+                "fieldValues": {
+                  "nodes": [
+                    {
+                      "__typename": "ProjectV2ItemFieldTextValue",
+                      "text": "Define and Align on the Vision - Production",
+                      "field": {
+                        "name": "Title"
+                      }
+                    }
+                  ]
+                },
+                "content": {
+                  "__typename": "DraftIssue",
+                  "title": "Define and Align on the Vision - Production"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "organization": {
+        "projectV2": {
+          "title": "Asset Pipeline",
+          "url": "https://github.com/orgs/Screwloose-Games/projects/38",
+          "fields": {
+            "nodes": [
+              {
+                "id": "F_title",
+                "name": "Title",
+                "dataType": "TITLE"
+              },
+              {
+                "id": "F_status",
+                "name": "Status",
+                "dataType": "SINGLE_SELECT"
+              },
+              {
+                "id": "F_path",
+                "name": "filepath",
+                "dataType": "TEXT"
+              }
+            ]
+          },
+          "items": {
+            "totalCount": 9,
+            "pageInfo": {
+              "hasNextPage": false,
+              "endCursor": "CURSOR_PAGE_2"
+            },
+            "nodes": [
+              {
+                "id": "PVTI_pr_item",
+                "type": "PULL_REQUEST",
+                "fieldValues": {
+                  "nodes": []
+                },
+                "content": {
+                  "__typename": "PullRequest",
+                  "number": 40,
+                  "title": "Tidy the export presets",
+                  "url": "https://github.com/Screwloose-Games/back-in-the-game-jam/pull/40",
+                  "state": "OPEN",
+                  "merged": false,
+                  "repository": {
+                    "nameWithOwner": "Screwloose-Games/back-in-the-game-jam"
+                  }
+                }
+              },
+              {
+                "id": "PVTI_prose",
+                "type": "ISSUE",
+                "fieldValues": {
+                  "nodes": []
+                },
+                "content": {
+                  "__typename": "Issue",
+                  "number": 9,
+                  "title": "Create ambient audio for wind_loop",
+                  "url": "https://github.com/Screwloose-Games/back-in-the-game-jam/issues/9",
+                  "state": "OPEN",
+                  "repository": {
+                    "nameWithOwner": "Screwloose-Games/back-in-the-game-jam"
+                  },
+                  "assignees": {
+                    "nodes": []
+                  },
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "audio"
+                      }
+                    ]
+                  },
+                  "closedByPullRequestsReferences": {
+                    "nodes": []
+                  },
+                  "timelineItems": {
+                    "nodes": []
+                  },
+                  "issueFieldValues": {
+                    "nodes": [
+                      {
+                        "__typename": "IssueFieldTextValue",
+                        "value": "not sure yet, ask Meg",
+                        "field": {
+                          "name": "filepath"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "PVTI_two_paths",
+                "type": "ISSUE",
+                "fieldValues": {
+                  "nodes": []
+                },
+                "content": {
+                  "__typename": "Issue",
+                  "number": 11,
+                  "title": "Implement the hamster controller",
+                  "url": "https://github.com/Screwloose-Games/back-in-the-game-jam/issues/11",
+                  "state": "OPEN",
+                  "repository": {
+                    "nameWithOwner": "Screwloose-Games/back-in-the-game-jam"
+                  },
+                  "assignees": {
+                    "nodes": [
+                      {
+                        "login": "dev-two"
+                      }
+                    ]
+                  },
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "implementation"
+                      }
+                    ]
+                  },
+                  "closedByPullRequestsReferences": {
+                    "nodes": []
+                  },
+                  "timelineItems": {
+                    "nodes": [
+                      {
+                        "__typename": "CrossReferencedEvent",
+                        "source": {
+                          "number": 21,
+                          "url": "https://github.com/Screwloose-Games/back-in-the-game-jam/pull/21",
+                          "state": "OPEN",
+                          "merged": false,
+                          "headRefOid": "bbbb222",
+                          "repository": {
+                            "nameWithOwner": "Screwloose-Games/back-in-the-game-jam"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "issueFieldValues": {
+                    "nodes": [
+                      {
+                        "__typename": "IssueFieldTextValue",
+                        "value": "- `game/hamster/hamster.gd`\n- res://game/hamster/hamster.tscn",
+                        "field": {
+                          "name": "filepath"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "PVTI_draft_with_filepath",
+                "type": "DRAFT_ISSUE",
+                "fieldValues": {
+                  "nodes": [
+                    {
+                      "__typename": "ProjectV2ItemFieldTextValue",
+                      "text": "assets/art/3d/props/lantern/sm_lantern.gltf",
+                      "field": {
+                        "name": "filepath"
+                      }
+                    }
+                  ]
+                },
+                "content": {
+                  "__typename": "DraftIssue",
+                  "title": "Hanging lantern"
+                }
+              },
+              {
+                "id": "PVTI_other_repo",
+                "type": "ISSUE",
+                "fieldValues": {
+                  "nodes": [
+                    {
+                      "__typename": "ProjectV2ItemFieldTextValue",
+                      "text": "assets/art/3d/structures/market_stall/sm_MarketStall.gltf",
+                      "field": {
+                        "name": "filepath"
+                      }
+                    }
+                  ]
+                },
+                "content": {
+                  "__typename": "Issue",
+                  "number": 3,
+                  "title": "Create 3D model for market_stall",
+                  "url": "https://github.com/Screwloose-Games/some-other-repo/issues/3",
+                  "state": "OPEN",
+                  "repository": {
+                    "nameWithOwner": "Screwloose-Games/some-other-repo"
+                  },
+                  "assignees": {
+                    "nodes": []
+                  },
+                  "labels": {
+                    "nodes": [
+                      {
+                        "name": "3d model"
+                      }
+                    ]
+                  },
+                  "closedByPullRequestsReferences": {
+                    "nodes": []
+                  },
+                  "timelineItems": {
+                    "nodes": []
+                  },
+                  "issueFieldValues": {
+                    "nodes": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "pr_files": {
+    "Screwloose-Games/back-in-the-game-jam": {
+      "14": [
+        "assets/art/3d/props/rain_barrel/sm_rain_barrel.gltf",
+        "assets/art/3d/props/rain_barrel/sm_rain_barrel.bin",
+        "assets/art/3d/props/rain_barrel/t_rain_barrel_basecolor.png",
+        "assets/art/3d/props/rain_barrel/sm_rain_barrel.gltf.import"
+      ],
+      "21": [
+        "game/hamster/hamster.gd"
+      ]
+    }
+  }
+}

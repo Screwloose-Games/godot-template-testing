@@ -9,7 +9,7 @@ It used to point +Z on both annotated views, which is the model's BACK: this
 project's forward is -Z (Godot's Vector3.FORWARD, from +Y in Blender). So the
 arrow labelled "Facing Direction" agreed with a model built backwards and
 disagreed with a correct one, inverting the only check a human has to make by
-eye. Confirmed with a matched pair of wedges -- assets/3d/test_facing_forward
+eye. Confirmed with a matched pair of wedges -- assets/art/3d/test_facing_forward
 (nose -Z) and test_facing_backwards (nose +Z), identical in every validator
 verdict -- where the arrow sided with the backwards one.
 

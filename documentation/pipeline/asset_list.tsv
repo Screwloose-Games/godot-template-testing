@@ -1,0 +1,2 @@
+priority	status	name	description	file_location
+low	delivered	character	The player character, a tentacle crawler	examples/3d/tentacle_crawler/character/character.tscn

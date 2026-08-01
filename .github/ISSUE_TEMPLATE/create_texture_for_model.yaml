@@ -27,7 +27,7 @@ body:
       description: >-
         Provide the full filepath where the texture should be saved. Textures sit
         beside the .gltf that references them, not in a separate textures/ folder.
-      placeholder: "Enter the full file path... assets/3d/{category}/{object_name}/t_{object_name}_basecolor.png"
+      placeholder: "Enter the full file path... assets/art/3d/{category}/{object_name}/t_{object_name}_basecolor.png"
     validations:
       required: true
 

@@ -9,9 +9,9 @@
 ; A 60 m box, a 12 m pinch, and enough light to see a black creature.
 ;
 ; If the crawl is not interesting HERE, no amount of corridor generation later
-; will rescue it. Retune in this order: stroke_gain, then body_drag, then
-; brake_multiplier, then fire_interval, and leash_stiffness LAST -- the leash also
-; sets how far the body lags the marker, so it moves two feelings at once.
+; will rescue it. Retune in this order: stroke_gain, then body_drag, then GLIDE_MIN,
+; then PULL_HANDOFF, and leash_stiffness LAST -- the leash also sets how far the body
+; lags the marker, so it moves two feelings at once.
 ;
 ; Open it and press F6, or:
 ;   godot --path <project root> res://examples/3d/tentacle_crawler/scenes/crawl_sandbox.tscn

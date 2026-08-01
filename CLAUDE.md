@@ -14,7 +14,7 @@ texture budgets are tight.
 | `tools/gltf-validator/` | The 3D model checks, importable without Docker. |
 | `tools/blender-vehicle/` | Procedural vehicle toolkit + the retrospective that produced it. |
 | `.claude/rules/` | Path-scoped rules that load when you touch matching files. |
-| `assets/3d/`, `game/` | 3D assets and 2D art. Deliberately different roots. |
+| `assets/art/3d/`, `assets/art/2d/` | 3D assets and 2D art, siblings under `assets/art/`. |
 | `examples/` | Self-contained "is this loop fun?" prototypes. Exempt from shared conventions on purpose — do not tidy them into line. |
 
 ## Generated files

@@ -34,13 +34,33 @@ extends Node3D
 ## Steady pull from every gripping strand, m/s^2. The SUSPENSION: it acts in
 ## whatever direction the strand happens to lie, which is what holds the creature
 ## off the walls and, summed over a splayed set of anchors, what centres it.
-@export var hold_gain: float = 3.5
+##
+## 2.5, and its RETROGRADE COMPONENT IS NOW STRIPPED -- see `_anchor_accel`. Under the
+## pair-lunge gait a spent pair deliberately trails behind the body, so `anchor - shoulder`
+## points backwards by construction and an ungated hold term brakes the glide it is
+## supposed to be gliding through. The obvious fix, halving the gain, treats the symptom
+## and costs the bracing that is hold's actual job -- which matters MORE now, not less,
+## because only two strands are ever holding.
+@export var hold_gain: float = 2.5
 ## Peak pull from a stroking strand, m/s^2. The PROPULSION.
 ##
-## One stroke delivers stroke_gain * STROKE_TIME * 0.5 m/s of delta-v, because the
-## raised-cosine envelope integrates to exactly half its peak -- 22 * 0.34 * 0.5 =
-## 3.74 m/s here. Tune this FIRST; it is the loudest number in the example.
-@export var stroke_gain: float = 22.0
+## One stroke delivers `PAIR_SIZE * stroke_gain * STROKE_TIME * 0.5 * along^2` m/s of
+## delta-v, because the raised-cosine envelope integrates to exactly half its peak.
+## Tune this FIRST; it is the loudest number in the example.
+##
+## THE SHARE ALONG TRAVEL IS `along` SQUARED, NOT `along`. The acceleration is
+## `direction * stroke_gain * envelope * maxf(along, 0)` and its useful component is that
+## vector dotted back onto travel, so the angle is paid for twice. It is an easy factor
+## to drop and it overstates the lunge by a third: at a typical `along` of 0.78 the naive
+## reading is 22% optimistic. Here, 2 * 38 * 0.30 * 0.5 * 0.6 = 6.8 m/s per lunge.
+##
+## 38, up from 22, because a PAIR now does what up to five strands used to share. Not
+## higher, and the ceiling is geometric rather than aesthetic: the corridor is 4.5 x 4.0 m
+## against a body_radius of 2.15, so the creature has about 0.1 m of margin, and a
+## ballistic lunge through the course's 12 m-radius yaw departs the tangent by roughly
+## `lunge^2 / (2 * radius)`. At a 3.6 m coast that is 0.27 m and `[corridor-run]` holds;
+## at the 6.5 m coast a 60 gain would buy, it is 0.9 m and the creature leaves the shell.
+@export var stroke_gain: float = 38.0
 ## Pull toward the anchor centroid, 1/s^2 per metre of lateral offset. Applied
 ## perpendicular to travel only: the along-travel part is already the drag, and
 ## counting it twice just makes the creature faster for no reason anyone can see.
@@ -62,7 +82,18 @@ extends Node3D
 ## overshoots, gets pulled back, falls behind, and hauls again -- a limit cycle that
 ## never settles, on a player who is not touching the controls. Anchoring the ramp to
 ## the same distance the leash rests at makes "at rest" mean one thing to both.
-@export var drive_distance: float = 3.0
+##
+## 6.0, up from 3.0, and this is where the pair-lunge gait's anti-overshoot lives.
+## A lunge covers about 3.6 m, which used to be more than the whole ramp -- the creature
+## crossed from full drive to none inside a single burst and hunted. At 6.0 full drive
+## sits at a 10 m lead, so a lunge from there lands at 6.4 m and the next urge is already
+## most of the way down. It self-limits.
+##
+## NOT `leash_slack`, which is the obvious other lever and the wrong one: `[lag]` asserts
+## the marker gap is under 6.0 m at four seconds, and the resting gap IS `leash_slack`.
+## Raising it to 6.0 puts that check on a knife edge and silently invalidates the
+## README's "idle separation settles to exactly 4.00 m".
+@export var drive_distance: float = 6.0
 
 @export_group("Leash")
 ## Metres of dead zone before the leash pulls at all.
@@ -119,12 +150,21 @@ extends Node3D
 ## 1.2, down from 1.6. Terminal speed under the leash is `leash_max_accel / body_drag`,
 ## so drag is the other half of how fast this thing can ever go -- raising the ceiling
 ## without touching it just made the creature lurch harder into the same wall of drag
-## and cover slightly LESS ground. The ratchet still reads: `brake_multiplier` triples
-## this between strokes, and that ratio is what the pulse-glide comes from, not the
-## absolute value.
+## and cover slightly LESS ground.
+##
+## This is now the ONLY thing shaping the glide, so it sets how far a lunge carries:
+## `dv / body_drag * (1 - exp(-body_drag * t))`, about 3.6 m per cycle at these values.
+## It is the second lever to reach for after `stroke_gain`.
 @export var body_drag: float = 1.2
-## Extra drag while gripping but not pulling. The RATCHET -- see `_drag_accel`.
-@export var brake_multiplier: float = 3.0
+## Extra drag while gripping but not pulling. DISABLED AT 1.0 -- see `_drag_accel`.
+##
+## Under the old continuous gait this was the entire "drags itself" read, and dropping it
+## to 1.0 made the creature glide everywhere and stop being a creature. The pair-lunge
+## gait inverts that: the pulse now comes from a synchronised burst followed by a
+## deliberate ballistic coast, and braking through the coast destroys it. Kept as a knob
+## rather than deleted because it is exactly the lever for a heavier, more laboured
+## variant of the same gait.
+@export var brake_multiplier: float = 1.0
 ## Soft ceiling on speed, m/s. Raised alongside `leash_max_accel`; with the marker at
 ## 27 m/s the creature was sitting on the old 14 for most of a driven run.
 @export var max_speed: float = 30.0
@@ -147,6 +187,7 @@ var _up: Vector3 = Vector3.UP
 var _travel: Vector3 = Vector3.FORWARD
 var _time: float = 0.0
 var _pull_lateral: Vector3 = Vector3.ZERO
+var _stroke_urge: float = -1.0
 var _probe: CorridorProbe = CorridorProbe.new()
 
 @onready var _hull: Node3D = %Hull as Node3D
@@ -251,7 +292,7 @@ func _anchor_accel() -> Vector3:
 	if tentacles == null or not tentacles.enabled:
 		return Vector3.ZERO
 
-	var urge: float = _drive_urge()
+	var urge: float = _latched_urge()
 	var accel: Vector3 = Vector3.ZERO
 	var centroid: Vector3 = Vector3.ZERO
 	var planted: int = 0
@@ -267,16 +308,30 @@ func _anchor_accel() -> Vector3:
 		if direction.is_zero_approx():
 			continue
 		var along: float = direction.dot(_travel)
-		var tension: float = hold_gain + stroke_gain * tentacles.envelope(i) * maxf(along, 0.0)
-		accel += direction * tension
+		# The hold term keeps its sideways bracing and loses its backward haul. A spent
+		# pair TRAILS on purpose under this gait, so `direction` points behind the body
+		# for most of its grip; without this the suspension quietly becomes an anchor in
+		# the nautical sense and eats the glide the lunge just bought.
+		var hold: Vector3 = direction * hold_gain
+		var backward: float = hold.dot(_travel)
+		if backward < 0.0:
+			hold -= _travel * backward
+		accel += hold + direction * stroke_gain * tentacles.envelope(i) * maxf(along, 0.0)
 
 	if planted == 0:
 		return Vector3.ZERO
 
 	# Centre on what the strands are holding, sideways only.
-	var to_centroid: Vector3 = centroid / float(planted) - _position
-	var lateral: Vector3 = to_centroid - _travel * to_centroid.dot(_travel)
-	accel += lateral * center_gain
+	#
+	# TWO ANCHORS MINIMUM. The centroid of a single anchor IS that anchor, so with one
+	# strand planted this stops being a centring force and becomes a pull straight at
+	# whichever wall that strand happens to be gripping -- at exactly the moment there is
+	# no opposing limb to cancel it. The gait already declines to haul on a lone strand;
+	# this is the same rule applied to the passive term.
+	if planted >= TentacleTuning.PAIR_SIZE:
+		var to_centroid: Vector3 = centroid / float(planted) - _position
+		var lateral: Vector3 = to_centroid - _travel * to_centroid.dot(_travel)
+		accel += lateral * center_gain
 
 	# THE URGE GATES THE WHOLE ANCHOR FORCE, not just its forward part.
 	#
@@ -311,6 +366,27 @@ func _drive_urge() -> float:
 	return clampf((lead - leash_slack) / maxf(drive_distance, 0.001), 0.0, 1.0)
 
 
+## The urge, held constant for the duration of a stroke.
+##
+## A LUNGE OUTRUNS ITS OWN REASON FOR EXISTING. The urge is a ramp on how far the marker
+## leads the body, and one burst closes 3.6 m of that lead in well under a second -- so
+## sampling it every tick means the creature commits to a stroke, sprints far enough to
+## satisfy the gate mid-burst, and has the second half of its own pull switched off under
+## it. The visible result is a lunge that dies halfway, which reads as the tentacles
+## slipping rather than as a control decision.
+##
+## Latching it at the leading edge of the burst makes a stroke an all-or-nothing
+## commitment, which is what an authored envelope is supposed to be. The gate still does
+## its job -- it decides whether the NEXT lunge happens at all.
+func _latched_urge() -> float:
+	if not tentacles.any_pulling():
+		_stroke_urge = -1.0
+		return _drive_urge()
+	if _stroke_urge < 0.0:
+		_stroke_urge = _drive_urge()
+	return _stroke_urge
+
+
 ## Push off any wall closer than `probe_comfort`.
 ##
 ## This is what keeps the creature off the wall in a narrow section where there may
@@ -329,15 +405,16 @@ func _probe_accel() -> Vector3:
 	return accel
 
 
-## Medium drag, tripled between strokes.
+## Medium drag. The brake is now OFF by default -- see `brake_multiplier`.
 ##
-## THE RATCHET, and the single line that makes this read as "dragging itself" rather
-## than "flying". Gripping but not hauling means the creature is anchored and
-## resisting its own drift, so it very nearly stops; the moment a strand strokes, the
-## brake releases and it lurches. Pulse, glide, pulse.
+## This used to be the ratchet: gripping but not hauling tripled the drag, the creature
+## very nearly stopped between strokes, and the next stroke read as a lurch. It was the
+## single line that made a continuous haul look like dragging.
 ##
-## Delete the multiplier and every assertion in the suite still passes -- the
-## creature just glides everywhere and stops being a creature.
+## The pair-lunge gait gets its pulse from the gait itself instead. One synchronised
+## burst from two strands, then a deliberate GLIDE_MIN of ballistic coast on momentum
+## alone. Braking through that coast would flatten exactly the phase the gait exists to
+## produce -- the creature is supposed to SHOOT forward and carry, not stop and shuffle.
 func _drag_accel() -> Vector3:
 	return -_velocity * body_drag * _brake_multiplier()
 
@@ -426,10 +503,16 @@ func _writhe_roll() -> float:
 func _apply_squash() -> void:
 	if _hull == null:
 		return
+	# AVERAGED OVER THE PAIR, not summed raw. Two strands now stroke on the same tick, so
+	# a raw sum peaks at 2.0 and the clamp turns every single lunge into a full-depth
+	# squash -- the flex becomes a binary flash that tells you nothing about how hard the
+	# creature is actually pulling. Dividing by the pair size restores the 0..1 range the
+	# envelope was designed to produce, so a half-strength lunge still looks like one.
 	var effort: float = 0.0
 	if tentacles != null and tentacles.enabled:
 		for i: int in tentacles.count():
 			effort += tentacles.envelope(i)
+		effort /= float(TentacleTuning.PAIR_SIZE)
 	effort = clampf(effort, 0.0, 1.0)
 	_hull.scale = Vector3(1.0 + 0.12 * effort, 1.0 + 0.12 * effort, 1.0 - 0.22 * effort)
 

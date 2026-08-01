@@ -216,22 +216,54 @@ func _check_tentacles() -> void:
 	for i: int in strands:
 		was_reaching.append(false)
 
+	var was_pulling: Array[bool] = []
+	var was_gripping: Array[bool] = []
+	for i: int in strands:
+		was_pulling.append(false)
+		was_gripping.append(false)
+
 	var planted_min: int = strands + 1
 	var planted_max: int = -1
+	var ungripped: int = 0
+	var longest_ungripped: int = 0
 	var off_wall: int = 0
 	var backward: int = 0
 	var checked_anchors: int = 0
+	# [pair-lunge]: the tick each PULLING onset happened on, and which strand it was.
+	var burst_ticks: Array[int] = []
+	var burst_strands: Array[int] = []
+	# [full-stretch]: shoulder-to-anchor against that strand's own reach, at plant time.
+	var stretched: int = 0
+	var plants: int = 0
+	var stretch_ratios: Array[float] = []
+	var forward_ratios: Array[float] = []
+	var stroked: Array[bool] = []
+	for i: int in strands:
+		stroked.append(false)
+	# [release-behind]: how far behind the body an anchor was when it was let go.
+	var release_depths: Array[float] = []
 
 	# Fly the marker down the corridor so the creature has a reason to reach.
 	Input.action_press(&"crawler_forward")
-	var ticks: int = int(6.0 * Engine.physics_ticks_per_second)
+	# A ONE-SECOND WARM-UP, excluded from the planted floor. The creature starts with
+	# every strand SEARCHING and nothing gripping, so tick zero is legitimately 0 planted
+	# and a floor asserted from it can only ever be 0 -- which asserts nothing.
+	var warmup: int = Engine.physics_ticks_per_second
+	var ticks: int = int(8.0 * Engine.physics_ticks_per_second)
 	for tick: int in ticks:
 		await get_tree().physics_frame
 		var planted: int = _tentacles.planted_count()
-		planted_min = mini(planted_min, planted)
-		planted_max = maxi(planted_max, planted)
+		if tick >= warmup:
+			planted_min = mini(planted_min, planted)
+			planted_max = maxi(planted_max, planted)
+			if planted == 0:
+				ungripped += 1
+				longest_ungripped = maxi(longest_ungripped, ungripped)
+			else:
+				ungripped = 0
 		for i: int in strands:
-			var reaching: bool = _tentacles.phase_of(i) == TentacleArray.Phase.REACHING
+			var phase: int = _tentacles.phase_of(i)
+			var reaching: bool = phase == TentacleArray.Phase.REACHING
 			if reaching and not was_reaching[i]:
 				(launch_ticks[i] as Array).append(tick)
 				launches[i] += 1
@@ -241,6 +273,41 @@ func _check_tentacles() -> void:
 					backward += 1
 				checked_anchors += 1
 			was_reaching[i] = reaching
+
+			var pulling: bool = phase == TentacleArray.Phase.PULLING
+			if pulling and not was_pulling[i]:
+				burst_ticks.append(tick)
+				burst_strands.append(i)
+			was_pulling[i] = pulling
+
+			if pulling:
+				stroked[i] = true
+
+			var gripping: bool = _tentacles.is_planted(i)
+			if gripping and not was_gripping[i]:
+				plants += 1
+				stroked[i] = false
+				var reach: float = maxf(_tentacles.reach_of(i), 0.001)
+				var arm: Vector3 = _tentacles.anchor(i) - _tentacles.shoulder(i)
+				stretch_ratios.append(arm.length() / reach)
+				# The forward component, which is what the solver now maximises and what
+				# "reach forward and grab the wall" actually means to look at.
+				var forward: float = arm.dot(_crawler.wanted_direction()) / reach
+				forward_ratios.append(forward)
+				if forward >= 0.45:
+					stretched += 1
+			elif was_gripping[i] and phase == TentacleArray.Phase.RELEASING:
+				# ONLY THE STRANDS THAT ACTUALLY PROPELLED. The brief is about the pair
+				# that hauls: it stays stuck to the wall until it is about a metre behind.
+				# Strands that gripped and were retired without ever stroking -- surplus
+				# trims, overstretch on a limb the body swung wide of, a team recalled for
+				# its turn -- release wherever they happen to be, and averaging them in
+				# measures the exceptions rather than the gait.
+				if stroked[i]:
+					var travel: Vector3 = _crawler.wanted_direction()
+					var offset: Vector3 = _tentacles.anchor(i) - _crawler.global_position
+					release_depths.append(offset.dot(travel))
+			was_gripping[i] = gripping
 	Input.action_release(&"crawler_forward")
 
 	_report(
@@ -256,19 +323,51 @@ func _check_tentacles() -> void:
 		checked_anchors > 0 and backward == 0,
 		"%d anchors behind the body at plant time (need 0)" % backward
 	)
+	# A CEILING, AND A TIME LIMIT RATHER THAN A FLOOR.
+	#
+	# A hard floor of one grip is the obvious assertion and it is wrong for this gait: the
+	# spent pair deliberately hangs on until it has trailed a metre behind, and the fresh
+	# pair is still in flight when it lets go, so there is a real and intended moment mid
+	# lunge with nothing attached at all. That is the creature being ballistic, which is
+	# the whole point of the glide.
+	#
+	# What must NOT happen is free-falling for an appreciable time -- that is the failure
+	# where the cycle has stalled and the leash is quietly doing the work. So: bound how
+	# LONG it may hold nothing, not whether it ever does.
+	var ungripped_seconds: float = float(longest_ungripped) / float(Engine.physics_ticks_per_second)
 	_report(
 		"planted-band",
-		planted_max <= TentacleTuning.MAX_PLANTED,
+		planted_max <= TentacleTuning.MAX_PLANTED and ungripped_seconds < 0.35,
 		(
-			"planted ranged %d..%d over 6 s (ceiling %d)"
-			% [planted_min, planted_max, TentacleTuning.MAX_PLANTED]
+			"planted ranged %d..%d after warm-up (ceiling %d), longest with nothing gripping %.2f s (need < 0.35)"
+			% [planted_min, planted_max, TentacleTuning.MAX_PLANTED, ungripped_seconds]
 		)
 	)
 
+	# The spread bar is 3 rather than 2 because the two shortest chains genuinely fail the
+	# odd search -- a 4.4 m limb in a 4 m-clear tube has a very narrow band of angles that
+	# reach a wall at all -- and a failed search costs its team that turn. Measured at 1,
+	# 2 and 3 across runs where the rotation was demonstrably working.
+	#
+	# ASSERTED AS A BALANCE, NOT AS A QUOTA. "Every strand launched at least twice in six
+	# seconds" was the right test for a scheduler that picked the oldest idle strand; it
+	# is the wrong one for fixed teams in fixed rotation. Four teams at roughly a 0.8 s
+	# cycle get about 1.9 turns each in the window, so whether a given strand lands on 1
+	# or 2 is which side of the quantisation it fell on, not whether the gait is fair.
+	# Measured [2, 2, 3, 2, 2, 2, 1, 1] on a run where the rotation was working perfectly.
+	#
+	# What the design actually guarantees is that no strand is SKIPPED and no strand
+	# hogs: the cursor visits every team in order, so counts may differ by the window
+	# quantisation plus one failed search, and no more.
 	var starved: int = 0
+	var most: int = 0
+	var fewest: int = strands + 1
 	for i: int in strands:
-		if launches[i] < 2:
+		if launches[i] < 1:
 			starved += 1
+		most = maxi(most, launches[i])
+		fewest = mini(fewest, launches[i])
+	var spread: int = most - fewest
 	var collisions: int = _same_tick_launches(launch_ticks, strands)
 	# Misses alongside launches, because "never got a launch slot" and "got the slot and
 	# could not reach anything" look identical from the launch counts and want opposite
@@ -280,10 +379,158 @@ func _check_tentacles() -> void:
 		reaches.append("%.1f" % _tentacles.reach_of(i))
 	_report(
 		"stagger",
-		starved == 0 and collisions == 0,
+		starved == 0 and spread <= 3 and collisions == 0,
 		(
-			"launches %s, misses %s, reach %s, %d strand(s) fired < 2 times, %d same-tick collisions"
-			% [str(launches), str(misses), str(reaches), starved, collisions]
+			"launches %s, misses %s, reach %s, %d never fired, spread %d (need <= 3), %d same-tick collisions"
+			% [str(launches), str(misses), str(reaches), starved, spread, collisions]
+		)
+	)
+	_report_pair_lunge(burst_ticks, burst_strands)
+	# ASSERTED ON THE MEAN, NOT ON A HEADCOUNT CLEARING REACH_TOLERANCE.
+	#
+	# REACH_TOLERANCE is a SEARCH parameter -- it tells the sweep when it may stop hunting
+	# and settle -- and it makes a poor pass mark, because whether a given strand can hit
+	# 85% of its own reach is a fact about the wall in front of it rather than about the
+	# solver. Each strand hunts a fixed azimuth sector, so one aimed at a flat face has
+	# less distance available than one aimed into a corner; ANCHOR_MIN_SEPARATION then
+	# vetoes the far candidates that sit too near an existing grip; and FORWARD_BIAS_MIN
+	# rules out the widest angles, which are where the short strands' longest rays live.
+	# 79% was measured with the sweep running to exhaustion and taking the farthest hit it
+	# could find -- that IS the geometry's ceiling here, not a solver leaving reach unused.
+	#
+	# The mean is the honest statement of "it uses the full length of the tentacle", and
+	# it still separates cleanly from the failure worth catching: a regression to
+	# nearest-wins, or to the old fixed 0.8-of-reach target, lands near 0.4-0.5.
+	var mean_ratio: float = 0.0
+	for ratio: float in stretch_ratios:
+		mean_ratio += ratio
+	mean_ratio /= maxf(float(stretch_ratios.size()), 1.0)
+	var mean_forward: float = 0.0
+	for ratio: float in forward_ratios:
+		mean_forward += ratio
+	mean_forward /= maxf(float(forward_ratios.size()), 1.0)
+	# ASSERTED ON THE FORWARD COMPONENT, with total stretch reported alongside.
+	#
+	# Total reach is the wrong bar now, and it was the wrong bar all along -- a strand
+	# gripping 7 m out to the side scores beautifully on it and is precisely the failure
+	# this is supposed to catch. The two numbers together also localise a regression: a
+	# high total with a low forward share means the search went back to preferring
+	# whatever is farthest, which is the near-perpendicular ray every time.
+	_report(
+		"full-stretch",
+		plants > 0 and mean_forward >= 0.45,
+		(
+			"mean %.0f%% of reach spent FORWARD over %d anchors (need >= 45%%), %d cleared it; total stretch %.0f%%"
+			% [mean_forward * 100.0, plants, stretched, mean_ratio * 100.0]
+		)
+	)
+	_report_release_behind(release_depths)
+
+
+## THE DIRECT ASSERTION OF THE GAIT: two tentacles, together, over and over.
+##
+## Every other check here would still pass on the old continuous haul -- anchors would
+## land on walls, ahead, staggered, and drag the creature along. Only this one can tell
+## "two strands lunge in unison" from "eight strands pull out of phase".
+##
+## Onsets are grouped by proximity in TICKS rather than sampled per interval, for the
+## same reason the launch stagger is: the whole property is which tick each strand
+## started on, and any coarser sample cannot tell a synchronised pair from two strands
+## that happened to fall in the same window.
+func _report_pair_lunge(burst_ticks: Array[int], burst_strands: Array[int]) -> void:
+	if _tentacles == null:
+		_report("pair-lunge", false, "no TentacleArray in the scene")
+		return
+	# PAIR_STAGGER is the launch gap, not the stroke gap -- a pair is granted PULLING on
+	# one tick. Three ticks of slack covers nothing worse than rounding.
+	var window: int = int(TentacleTuning.PAIR_STAGGER * Engine.physics_ticks_per_second) + 3
+	var lunges: int = 0
+	var full_pairs: int = 0
+	var same_side: int = 0
+	var i: int = 0
+	while i < burst_ticks.size():
+		var j: int = i
+		while j + 1 < burst_ticks.size() and burst_ticks[j + 1] - burst_ticks[i] <= window:
+			j += 1
+		var size: int = j - i + 1
+		lunges += 1
+		if size == TentacleTuning.PAIR_SIZE:
+			full_pairs += 1
+			# OPPOSED, not merely simultaneous. The pair exists so the two pulls cancel
+			# laterally and sum forward; two limbs hauling from the same side of the ring
+			# throw the creature at that wall instead. Half the ring apart is the ideal, so
+			# require at least a right angle of separation.
+			var apart: float = absf(
+				angle_difference(
+					_tentacles.sector_of(burst_strands[i]), _tentacles.sector_of(burst_strands[j])
+				)
+			)
+			if apart < PI * 0.5:
+				same_side += 1
+		i = j + 1
+	_report(
+		"pair-lunge",
+		# Same-side pairs are bounded rather than banned. The pair is chosen from whichever
+		# strands are FREE, and occasionally the free set holds nothing a right angle away
+		# from the longest-waiting one. Lunging with a less-than-ideal pair beats not
+		# lunging -- the alternative is stalling the gait to wait for a better partner --
+		# so allow a small tail and fail if it becomes the rule.
+		lunges >= 5 and full_pairs == lunges and same_side * 5 <= lunges,
+		(
+			"%d lunges in 8 s (need >= 5), %d were a full pair of %d, %d pulled from the same side (allow 1 in 5)"
+			% [lunges, full_pairs, TentacleTuning.PAIR_SIZE, same_side]
+		)
+	)
+
+
+## The spent pair must let go at about a metre behind, not at the escape hatch.
+##
+## `RELEASE_BEHIND_HARD` (-3.5) deliberately overrides the planted floor so two strands
+## can never deadlock each other. That makes it a perfectly good way for the gait to
+## LOOK like it works while the soft rule never fires at all -- the creature would still
+## crawl, still lunge, still pass every other check, and drag its spent limbs three and a
+## half metres before letting go. Asserting the mean depth is what separates the two.
+##
+## SANDBOX ONLY, and deliberately so: `behind` is measured against
+## `CrawlerBody.wanted_direction()`, which is the corner-peeked bearing to the marker. At
+## a bend that vector swings, so `behind` steps by whole metres for reasons that have
+## nothing to do with when a strand let go.
+func _report_release_behind(depths: Array[float]) -> void:
+	if depths.is_empty():
+		_report("release-behind", false, "no strand released its grip in 8 s")
+		return
+	# MEASURED OVER THE RELEASES THAT TRAILED, AND ON THE MEDIAN.
+	#
+	# Not every propelling limb can reach a metre behind the body, and that is geometry
+	# rather than a fault. A grip is also given up on OVERSTRETCH, deliberately, at 1.08 of
+	# the strand's reach -- paired with the poser's STRETCH_MAX so a tip never visibly
+	# parts company with the wall it claims to hold. A 4.4 m chain gripping a wall 4 m to
+	# the side is already at its limit by the time the body draws level with the anchor, so
+	# it lets go slightly ahead every time. Demanding otherwise asserts against the shape
+	# of the corridor.
+	#
+	# So: require that a real share of grips DO trail, and that when they do, the soft
+	# RELEASE_BEHIND rule is what fired rather than the -3.5 m deadlock escape hatch. That
+	# second half is the one worth having -- the creature crawls perfectly well with the
+	# soft rule dead and the hatch doing all the work, and nothing else here would notice.
+	# The median resists the long tail from a limb force-released far behind.
+	var trailed: Array[float] = []
+	var deepest: float = INF
+	for depth: float in depths:
+		deepest = minf(deepest, depth)
+		if depth < 0.0:
+			trailed.append(depth)
+	trailed.sort()
+	var share: float = float(trailed.size()) / float(depths.size())
+	var median: float = trailed[trailed.size() / 2] if not trailed.is_empty() else 0.0
+	var low: float = TentacleTuning.RELEASE_BEHIND_HARD + 0.5
+	var high: float = TentacleTuning.RELEASE_BEHIND + 0.7
+	_report(
+		"release-behind",
+		share >= 0.30 and median >= low and median <= high,
+		(
+			"%d propelling releases, %.0f%% trailed behind (need >= 30%%), median of those %.2f m (need %.2f..%.2f), deepest %.2f"
+			% [depths.size(), share * 100.0, median, low, high, deepest]
 		)
 	)
 
@@ -302,11 +549,15 @@ func _check_tentacles() -> void:
 func _check_drag_requires_anchors() -> void:
 	var without: float = await _crawl_distance(false)
 	var with_strands: float = await _crawl_distance(true)
+	# 8.0 rather than 3.0, and the number is measured rather than chosen: the pair-lunge
+	# gait covers 15.98 m in this window where the continuous haul managed a little over
+	# three. Half the measured figure is a threshold that still fails loudly if the
+	# tentacles stop contributing, without being so tight it fails on a slow first lunge.
 	_report(
 		"drag-requires-anchors",
-		without < 0.5 and with_strands > 3.0,
+		without < 0.5 and with_strands > 8.0,
 		(
-			"no leash: %.2f m in 4 s with tentacles OFF (need < 0.5), %.2f m with them ON (need > 3.0)"
+			"no leash: %.2f m in 4 s with tentacles OFF (need < 0.5), %.2f m with them ON (need > 8.0)"
 			% [without, with_strands]
 		)
 	)
@@ -354,12 +605,17 @@ func _check_ratchet() -> void:
 	for i: int in range(1, speeds.size() - 1):
 		if speeds[i] < speeds[i - 1] and speeds[i] <= speeds[i + 1]:
 			troughs += 1
+	# TROUGH COUNT DOWN, TROUGH DEPTH UP. The pulse used to come from tripling the drag
+	# between strokes, which produced many shallow dips; it now comes from a synchronised
+	# burst followed by a ballistic coast, which produces fewer and far deeper ones. A
+	# lunge cycle is about 0.85 s, so five seconds holds roughly six -- asserting six
+	# would be asserting the quantisation. Measured 0.06..8.04 m/s, a ratio of 0.007.
 	_report(
 		"ratchet",
-		troughs >= 6 and slowest < 0.55 * fastest,
+		troughs >= 4 and slowest < 0.35 * fastest,
 		(
-			"%d troughs in 5 s (need >= 6), speed %.2f..%.2f m/s (slowest must be < %.2f)"
-			% [troughs, slowest, fastest, 0.55 * fastest]
+			"%d troughs in 5 s (need >= 4), speed %.2f..%.2f m/s (slowest must be < %.2f)"
+			% [troughs, slowest, fastest, 0.35 * fastest]
 		)
 	)
 

@@ -133,11 +133,11 @@ flowchart LR
 
 ### Where things live
 
-- `assets/3d/{category}/{object}/`
+- `assets/art/3d/{category}/{object}/`
   - Everything belonging to one 3D object: the mesh, its buffer, its textures, every .import sidecar, and the model container scene. One directory per object, so a re-export touches nothing else.
-  - e.g. `assets/3d/structures/raised_bed/`
+  - e.g. `assets/art/3d/structures/raised_bed/`
 - `prefabs/{category}/`
-  - Prefab scenes, grouped by the same category names used under assets/3d/.
+  - Prefab scenes, grouped by the same category names used under assets/art/3d/.
   - e.g. `prefabs/structures/`
 - `levels/`
   - Shipping level scenes.
@@ -261,7 +261,7 @@ Paint the model and export PBR maps that Godot can read directly.
 1. Texture the model in Substance Painter.
 2. Open File > Export Textures.
 3. Set Output template to "glTF PBR Metal Roughness".
-4. Set the output directory to the asset's directory under assets/3d/{category}/{object}/.
+4. Set the output directory to the asset's directory under assets/art/3d/{category}/{object}/.
 5. Set the export filename pattern so the files land as t_{asset_name}_{descriptor}, lowercase.
 
 ![Substance Painter's General Export Parameters, with the Output template dropdown open and "glTF PBR Metal Roughness" arrowed out from the list.](images/art_substance_painter_output_template.jpg)
@@ -283,7 +283,7 @@ Export as separate glTF - not GLB - into the asset's directory.
 
 1. File > Export > glTF 2.0.
 2. In the Format dropdown choose "glTF Separate (.gltf + .bin + textures)".
-3. Export into assets/3d/{category}/{object}/ using the sm_ or sk_ prefixed name.
+3. Export into assets/art/3d/{category}/{object}/ using the sm_ or sk_ prefixed name.
 
 ![Blender's glTF 2.0 export sidebar with the Format dropdown open, showing "glTF Binary (.glb)" and the selected "glTF Separate (.gltf + .bin + textures)".](images/art_blender_gltf_export.png)
 
@@ -294,7 +294,7 @@ Export as separate glTF - not GLB - into the asset's directory.
 - **Required** — Prefix the filename sm_ for a static mesh, sk_ for a skeletal mesh.
   - *Why:* The prefix tells an integrator whether to expect an armature before opening the file.
 - **Required** — Check that the exported .gltf faces -Z. A model facing +Y in Blender becomes -Z in the glTF when the export is correct.
-  - *Why:* The .gltf is the file that gets validated and the file the game loads; the .blend is only what the artist looks at. -Z is Godot's forward, so this is the axis that makes the model face the way the engine thinks it does. Note this is deliberately not the glTF spec's own +Z-front convention: the spec is written for viewers, and matching Godot matters more here than matching Sketchfab. Do not "fix" it back to +Z. Measured against a real export rather than assumed - see the reference asset in assets/3d/example_cubes_facing, whose nub sits on Blender +Y and lands on glTF -Z.
+  - *Why:* The .gltf is the file that gets validated and the file the game loads; the .blend is only what the artist looks at. -Z is Godot's forward, so this is the axis that makes the model face the way the engine thinks it does. Note this is deliberately not the glTF spec's own +Z-front convention: the spec is written for viewers, and matching Godot matters more here than matching Sketchfab. Do not "fix" it back to +Z. Measured against a real export rather than assumed - see the reference asset in assets/art/3d/example_cubes_facing, whose nub sits on Blender +Y and lands on glTF -Z.
 - **Required** — The exported .gltf must be +Y up.
   - *Why:* +Y up is the glTF convention and what Godot expects. Blender's +Z up becomes +Y up through the same export conversion.
 
@@ -335,7 +335,7 @@ Make the next revision and re-export over the same filenames.
 
 `update_in_place.place_files`
 
-Copy the exported .gltf, .bin and textures into assets/3d/{category}/{object}/, overwriting what is there.
+Copy the exported .gltf, .bin and textures into assets/art/3d/{category}/{object}/, overwriting what is there.
 
 1. Copy the exported files into the asset's directory.
 2. Overwrite the existing files; do not rename anything.
@@ -399,7 +399,7 @@ Stage every changed file, including the sidecars, and commit.
 3. Write a message naming the asset, then commit and push.
 4. Open a pull request.
 
-![GitHub Desktop on the solar-punk-jam repository showing five staged files under assets/3d/structures/raised_bed - the .png, .bin and .gltf plus both .import sidecars - committing to the asset-updates branch.](images/update_commit_with_github_desktop.png)
+![GitHub Desktop on the solar-punk-jam repository showing five staged files under assets/art/3d/structures/raised_bed - the .png, .bin and .gltf plus both .import sidecars - committing to the asset-updates branch.](images/update_commit_with_github_desktop.png)
 
 *Five files for one asset staged together - the texture, the buffer, the mesh, and both .import sidecars.*
 
@@ -433,7 +433,7 @@ Make an inherited scene from the glTF and save it beside the model.
 2. Right-click and choose "New Inherited Scene".
 3. Save it in the same directory as the model, using the model's stem with a .tscn extension.
 
-![Godot's FileSystem context menu on sm_rain_barrel.gltf under assets/3d/structures, with "New Inherited Scene" highlighted.](images/integration_new_inherited_scene.png)
+![Godot's FileSystem context menu on sm_rain_barrel.gltf under assets/art/3d/structures, with "New Inherited Scene" highlighted.](images/integration_new_inherited_scene.png)
 
 *Right-click the .gltf and choose "New Inherited Scene".*
 
@@ -639,12 +639,12 @@ STUB. Records only what .github/scripts/validate-aseprite-files.py already enfor
 
 ### Where things live
 
-- `game/{game_object}/`
-  - One directory per game object. The file stem must match its parent or grandparent directory, so game/spider/spider.aseprite and game/spider/animations/spider.aseprite are both accepted.
-  - e.g. `game/spider/spider.aseprite`
-- `game/{game_object}/animations/`
+- `assets/art/2d/{game_object}/`
+  - One directory per game object. The file stem must match its parent or grandparent directory, so assets/art/2d/spider/spider.aseprite and assets/art/2d/spider/animations/spider.aseprite are both accepted.
+  - e.g. `assets/art/2d/spider/spider.aseprite`
+- `assets/art/2d/{game_object}/animations/`
   - Optional nesting level for animation files.
-  - e.g. `game/spider/animations/spider.aseprite`
+  - e.g. `assets/art/2d/spider/animations/spider.aseprite`
 
 ### Rules that apply everywhere
 

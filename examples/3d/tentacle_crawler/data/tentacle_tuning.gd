@@ -66,6 +66,24 @@ const GRIP_FACING_MIN: float = 0.25
 ## the correct origin on its own terms: `anchor - shoulder` is the exact vector the
 ## stroke force uses, so this now gates on the thing it is actually trying to predict.
 const FORWARD_BIAS_MIN: float = 1.5
+## A REACH-AHEAD RULE BELONGS IN THE OBJECTIVE, NOT IN THE PREDICATE, and that is why
+## there is no `FORWARD_BIAS_FRACTION` here.
+##
+## The flat floor above is weak for a long limb: 1.5 m ahead is a real constraint on a
+## 4.4 m chain and almost none on a 7.5 m one, which can satisfy it while gripping
+## something 7 m out to the SIDE -- geometrically ahead, visually a limb thrown sideways,
+## and reported as the tentacles flailing rather than grabbing. The obvious fix is to
+## scale the floor by the strand's own reach, and it is a trap: a limb gripping a wall `c`
+## to the side at polar angle `t` reaches `c / sin(t)` and lands only `c / tan(t)` ahead,
+## so demanding more distance ahead forces a narrower angle, which demands MORE reach than
+## the strand has. Measured at a 0.45 fraction, the shortest chain needed 4.46 m against
+## the 4.4 m it owns, had no legal band left at all, and took 0 anchors in 8 seconds;
+## total anchors across every strand fell from 23 to 8 and the lunge rate more than halved.
+## At 0.35 it still cost half the anchors.
+##
+## `TentacleArray._pick_anchor` maximises how far AHEAD an anchor is instead of how far
+## away. That reaches for the same read and rejects nothing, so it cannot starve a limb --
+## it only changes which of the hits a strand already accepts it prefers.
 ## Two anchors closer than this fuse into what looks like one thick tentacle, and
 ## the creature loses a limb without losing the force.
 ##
@@ -104,28 +122,54 @@ const OVERSTRETCH_FACTOR: float = 1.08
 ## (it moved, or it was never really there).
 const WALL_LOST_TOLERANCE: float = 0.35
 
-## Seconds between strand launches, globally. One strand may enter REACHING per
-## interval, no matter how many are idle. This is what stops all eight firing on
-## frame one and reading as a mechanism rather than an animal.
-##
-## 0.18, down from 0.22, because the deadlock guard at the bottom of this file scales
-## with the strand count: at eight strands a full round of launches took 1.76 s
-## against a 2.2 s grip ceiling, which passes the assert and still leaves almost no
-## margin for a strand that has to retry a failed search.
-const FIRE_INTERVAL: float = 0.18
 ## Seconds before a failed search tries again.
 const RETRY_DELAY: float = 0.25
-## The drag must never have a gap, so at least this many strands stay planted.
-const MIN_PLANTED: int = 3
-## And no more than this many, which is what makes it look GANGLY. Eight planted
-## strands is a suspension bridge; five planted and three thrashing is a creature.
-const MAX_PLANTED: int = 5
+## How many strands make up one lunge.
+##
+## THE GAIT IS BUILT ON PAIRS, not on a population. Two strands shoot forward one after
+## the other, both plant, both haul on the same tick, and the creature shoots forward.
+## Everything else in this file that mentions a count is derived from this.
+const PAIR_SIZE: int = 2
+## Floor on planted strands.
+##
+## ONE, not two, and the reason is `should_release` below rather than the look. That
+## predicate kills the soft release rule whenever `planted_count <= MIN_PLANTED`, so at
+## two the ONLY way a spent pair can ever let go is the -3.5 m hard escape hatch -- and
+## the whole point of this gait is that the propelling pair releases at about a metre
+## behind. The real floor is enforced where it belongs, in `TentacleArray._release_stale`,
+## which refuses to drop the last grips while nothing is inbound. A count cannot express
+## "inbound"; that guard can.
+const MIN_PLANTED: int = 1
+## And no more than this many: one spent pair still trailing plus one fresh pair that has
+## just planted. Anything above that is a strand the cycle has lost track of.
+const MAX_PLANTED: int = 4
 
 ## Seconds a stroke takes, start to finish.
-const STROKE_TIME: float = 0.34
-## Base delay between planting and stroking. Scaled per strand by its phase so two
-## strands that plant on the same tick still pull at different times.
-const STROKE_DELAY_BASE: float = 0.28
+const STROKE_TIME: float = 0.30
+## Seconds between the two launches of a pair -- "one after the other", not together.
+const PAIR_STAGGER: float = 0.10
+## Longest the cycle waits for both members of a pair to plant before giving up on them
+## and choosing a fresh pair.
+##
+## 0.45, down from 0.9, and it is a hang time rather than a comfort margin. A strike
+## crosses its span in about a quarter of a second, so any pair that is going to arrive
+## has arrived well before this. What the extra half-second bought was the WORST case: a
+## pair that will never plant, with the previous pair already released, and the creature
+## hanging on nothing for the whole timeout. Measured as 0.75 s with nothing gripping,
+## against a 0.35 s bound.
+const PAIR_SETTLE_TIMEOUT: float = 0.45
+## Minimum seconds from one burst starting to the next one starting. THE GLIDE.
+##
+## Without this the cycle hauls the instant both strands plant, so the cadence is set by
+## how quickly a search happens to succeed -- which is search luck, not a design. The
+## creature then lunges at an unstable rate somewhere between 0.4 and 0.9 s and the
+## ballistic phase never reads as deliberate. `[ratchet]`'s trough-depth assertion is a
+## coin flip without it: at a 0.85 s cycle the speed floor is about 0.26 of the peak and
+## passes, at 0.45 s it is about 0.40 and fails.
+const GLIDE_MIN: float = 0.55
+## Fraction of a stroke at which the NEXT pair launches, so the new limbs are already
+## flying forward while the creature is still shooting forward on the current burst.
+const PULL_HANDOFF: float = 0.35
 
 ## Cone half-angle around the travel direction that anchors are hunted in.
 ##
@@ -146,12 +190,18 @@ const CONE_MIN_ANGLE: float = 0.314
 const STARVE_WIDEN: float = 0.75
 const STARVE_LIMIT: int = 4
 
-## Fraction of its own reach a strand would rather be holding at.
+## Fraction of its own reach that counts as FULL STRETCH.
 ##
-## 0.8 leaves room to be hauled past the anchor before it has to let go, and -- more
-## importantly -- it makes strands of different lengths hunt at DIFFERENT distances, so
-## the long ones stop camping the near wall that the short ones cannot reach past.
-const PREFERRED_REACH: float = 0.8
+## Not a target -- `TentacleArray._pick_anchor` maximises distance directly by sweeping
+## the search cone outward and taking the first hit, so nothing needs to aim at a
+## fraction. This is the threshold `[full-stretch]` asserts against, and the band a
+## starving strand is allowed to fall below.
+##
+## The old `PREFERRED_REACH` of 0.8 was the opposite policy: hold at a comfortable
+## fraction so different lengths hunt different distances. That went with a gait where
+## five strands hauled steadily. A pair that has to yank the whole creature forward wants
+## every centimetre of lever it has.
+const REACH_TOLERANCE: float = 0.85
 
 ## Radians of azimuth jitter either side of a strand's assigned sector.
 ##
@@ -254,6 +304,13 @@ static func should_release(
 ## Measured against THIS STRAND's reach, so a 14-link tentacle at 2.6 m reads as taut
 ## and a 23-link one at the same distance reads as slack -- which is exactly what a
 ## creature with limbs of different lengths should look like.
+##
+## ONLY TRUE WHILE SEARCHING OR REACHING, since the gait became pair-lunge. A planted
+## strand is now at full stretch by construction -- `_pick_anchor` maximises distance --
+## so `chord` equals the strand's own reach, `1 - chord / reach_max` is zero, and this
+## pins at its 0.12 floor for every hauling limb. That is the intended read (a limb under
+## load goes straight) but it does mean the sag is no longer a readout that DISTINGUISHES
+## hauling limbs from each other. It distinguishes hauling from flailing.
 static func slack_fraction(chord: float, reach_max: float) -> float:
 	return 0.12 + 0.55 * clampf(1.0 - chord / maxf(reach_max, 0.001), 0.0, 1.0)
 
@@ -261,12 +318,6 @@ static func slack_fraction(chord: float, reach_max: float) -> float:
 ## Each strand's fixed phase, spread by the golden angle.
 static func phase_for(index: int) -> float:
 	return fmod(float(index) * GOLDEN_ANGLE, TAU)
-
-
-## Seconds between planting and stroking, for this strand. Scaled by its phase, so
-## the stagger survives two strands planting on the same tick.
-static func stroke_delay_for(index: int) -> float:
-	return STROKE_DELAY_BASE * (0.4 + 0.6 * phase_for(index) / TAU)
 
 
 ## Every constraint these constants must satisfy. Returns the failures as strings
@@ -279,8 +330,20 @@ static func invariant_failures() -> PackedStringArray:
 		bad.append("need MIN_PLANTED < MAX_PLANTED <= TENTACLE_COUNT")
 	if MIN_GRIP_TIME >= MAX_GRIP_TIME:
 		bad.append("MIN_GRIP_TIME must be below MAX_GRIP_TIME")
-	if STROKE_TIME <= 0.0 or STROKE_DELAY_BASE < 0.0:
-		bad.append("STROKE_TIME must be positive and STROKE_DELAY_BASE non-negative")
+	if STROKE_TIME <= 0.0:
+		bad.append("STROKE_TIME must be positive")
+	if TENTACLE_COUNT % PAIR_SIZE != 0:
+		bad.append("PAIR_SIZE must tile TENTACLE_COUNT into whole teams")
+	# One spent pair still trailing plus one fresh pair that has just planted.
+	if MAX_PLANTED < PAIR_SIZE * 2:
+		bad.append("MAX_PLANTED must fit the handoff overlap of two pairs")
+	if PULL_HANDOFF <= 0.0 or PULL_HANDOFF >= 1.0:
+		bad.append("PULL_HANDOFF must be a fraction of a stroke: 0 < PULL_HANDOFF < 1")
+	# Both members have to be in the air before the stroke they belong to is over.
+	if PAIR_STAGGER * 2.0 >= STROKE_TIME:
+		bad.append("PAIR_STAGGER must let a pair fully launch inside one stroke")
+	if GLIDE_MIN < STROKE_TIME:
+		bad.append("GLIDE_MIN below STROKE_TIME lets two bursts overlap")
 	if RELEASE_BEHIND_HARD >= RELEASE_BEHIND:
 		bad.append("RELEASE_BEHIND_HARD must be further back than RELEASE_BEHIND")
 	if CONE_MIN_ANGLE >= CONE_HALF_ANGLE:
@@ -302,10 +365,26 @@ static func invariant_failures() -> PackedStringArray:
 	# wall in plain sight and no assertion in this folder notices.
 	if OVERSTRETCH_FACTOR >= STRETCH_MAX:
 		bad.append("OVERSTRETCH_FACTOR must release before the link stretch clamps")
-	# The starvation deadlock. If a full round of launches takes longer than a grip
-	# lasts, the earliest strands time out before the last one has ever fired, and
-	# the creature permanently runs on two tentacles. The only symptom is "only two
-	# of them ever move", which looks like a rendering bug.
-	if FIRE_INTERVAL * float(TENTACLE_COUNT) >= MAX_GRIP_TIME:
-		bad.append("FIRE_INTERVAL * TENTACLE_COUNT must stay under MAX_GRIP_TIME")
+	if REACH_TOLERANCE <= 0.0 or REACH_TOLERANCE >= 1.0:
+		bad.append("REACH_TOLERANCE must be a fraction of reach: 0 < REACH_TOLERANCE < 1")
+	# A band no strand can be inside is a threshold that always fails.
+	if REACH_MIN >= REACH_TOLERANCE * REACH_MAX:
+		bad.append("REACH_TOLERANCE * REACH_MAX must leave a band above REACH_MIN")
+	# THE TEAM-REUSE DEADLOCK, and the successor to the old FIRE_INTERVAL guard.
+	#
+	# Teams are fixed, so a team's turn comes round again after every OTHER team has
+	# lunged once. If that takes less time than a grip can last, a team's own strands are
+	# still holding on from last time when it is asked to fire, and the cycle spends its
+	# turn force-releasing instead of reaching. The symptom is a creature that lunges
+	# every other cycle for no visible reason.
+	#
+	# Derived from the DESIGNED cadence (`GLIDE_MIN + STROKE_TIME`), not from
+	# `PAIR_SETTLE_TIMEOUT`. The timeout is the pathological path -- a team that cannot
+	# find anywhere to grip -- and building the bound from it asserts against a case that
+	# is already handled by rotating early.
+	var rotation: float = (
+		(GLIDE_MIN + STROKE_TIME) * (float(TENTACLE_COUNT) / float(PAIR_SIZE) - 1.0)
+	)
+	if rotation <= MAX_GRIP_TIME:
+		bad.append("a team's turn returns before MAX_GRIP_TIME frees its own strands")
 	return bad

@@ -69,12 +69,12 @@ ENFORCE_ONE_SHOT_REPEAT = False
 LOOP_TAG_SUFFIX = "_loop"
 
 # "An .aseprite file is created and saved in the correct directory:
-#  game/{game_object}/animations/{game_object}.aseprite"
+#  assets/art/2d/{game_object}/animations/{game_object}.aseprite"
 # Enforced as: the file's stem must match its parent or grandparent directory,
-# which accepts both game/spider/spider.aseprite and
-# game/spider/animations/spider.aseprite.
+# which accepts both assets/art/2d/spider/spider.aseprite and
+# assets/art/2d/spider/animations/spider.aseprite.
 ENFORCE_PATH_CONVENTION = True
-PATH_CONVENTION_ROOT = "game"
+PATH_CONVENTION_ROOT = "assets/art/2d"
 
 # "Submit a pull request with the .aseprite file, `.import` file, and all changes."
 REQUIRE_IMPORT_SIDECAR = True
@@ -283,8 +283,13 @@ class ArtFileValidator:
             return
         normalized = self.file_path.replace("\\", "/")
         parts = normalized.split("/")
-        if PATH_CONVENTION_ROOT not in parts:
-            # Assets outside the game/ tree (fixtures, tooling samples) are exempt.
+        # Prefix match, not segment membership: the root is a multi-segment path
+        # ("assets/art/2d"), so `root in parts` would never be true and would
+        # silently exempt every file. Anchored to a path boundary so a sibling
+        # directory like assets/art/2d_wip/ is not swept in.
+        root = PATH_CONVENTION_ROOT.strip("/")
+        if f"/{root}/" not in f"/{normalized}/":
+            # Assets outside the 2D art tree (fixtures, tooling samples) are exempt.
             return
 
         stem = os.path.splitext(os.path.basename(normalized))[0]

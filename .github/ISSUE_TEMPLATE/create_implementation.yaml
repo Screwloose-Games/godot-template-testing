@@ -18,7 +18,7 @@ body:
     attributes:
       label: File Location
       description: Provide the .gltf Location of what your implementing.
-      placeholder: "game/{folder_name}/sk_{file_name}.gltf"
+      placeholder: "assets/art/3d/{folder_name}/sk_{file_name}.gltf"
     validations:
       required: true
 
@@ -27,7 +27,7 @@ body:
       value: |
         ## Acceptance Criteria Guidelines:
         - [ ] Delete any filetype not needed for implementation in Subtasks.
-        - [ ] Provide .gltf Location: assets/3d/{category}/{object_name}/{prefix}_{file_name}.gltf
+        - [ ] Provide .gltf Location: assets/art/3d/{category}/{object_name}/{prefix}_{file_name}.gltf
         - [ ] Verify that the file is in the correct spot.
 
         ## File Path Standards
@@ -39,7 +39,7 @@ body:
         - {Same Directory}: Same directory.
         - [Under Construction]: Developing SOP.
 
-        3D assets live under `assets/3d/`. `game/` is the 2D art root; older
+        3D assets live under `assets/art/3d/`, 2D art under `assets/art/2d/`; older
         templates asked for 3D there and that form is deprecated.
 
         ## Texture Reminders
@@ -60,7 +60,7 @@ body:
         ## Acceptance Criteria:
         
         ### Skeletal Mesh (sk_)
-        - [ ] .gltf Location: assets/3d/{category}/{object_name}/sk_{file_name}.gltf
+        - [ ] .gltf Location: assets/art/3d/{category}/{object_name}/sk_{file_name}.gltf
         #### Configure Inherited Scene
         - [ ] Open location in Godot > Right click gltf file > New Inherited Scene
         - [ ] Under Scene > Click on a MeshInstance3D. (Repeat for each MeshInstance3D)
@@ -74,7 +74,7 @@ body:
         - [ ] GitHub Pull Request Created > Assign Reviewer.   
         
         ### Static Mesh (sm_)
-        - [ ] .gltf Location: assets/3d/{category}/{object_name}/sm_{file_name}.gltf
+        - [ ] .gltf Location: assets/art/3d/{category}/{object_name}/sm_{file_name}.gltf
         #### Configure Advanced Import Settings
         - [ ] Under FileSystem > Double click the .gltf file to open Advanced Import Settings for Scene.
         - [ ] Under Scene > Click on a MeshInstance3D. (Repeat for each MeshInstance3D)

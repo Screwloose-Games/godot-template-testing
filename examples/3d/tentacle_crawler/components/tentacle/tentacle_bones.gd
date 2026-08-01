@@ -267,9 +267,15 @@ func _t_at_arc(distance: float) -> float:
 ## THE BOW IS THE SLACK MADE VISIBLE, exactly as cargo_tether's TetherLine solves its
 ## sagitta rather than picking one. A strand at full stretch goes dead straight and a
 ## short one coils hard, so the curve is a free readout of "this one is hauling" that
-## costs nothing because it is just the geometry being honest. Measured against THIS
-## strand's reach, so the model's short and long tentacles read differently at the same
-## distance.
+## costs nothing because it is just the geometry being honest.
+##
+## WHAT THAT READOUT DISTINGUISHES CHANGED WITH THE PAIR-LUNGE GAIT. It used to separate
+## the model's short and long tentacles at the same distance, because a strand held at a
+## comfortable 0.8 of its reach had slack left to show. The solver now maximises distance
+## instead, so a planted strand sits at its own reach by construction, `slack_fraction`
+## pins at its 0.12 floor, and every gripping limb is taut. The bow now separates GRIPPING
+## from FLAILING rather than one gripping limb from another -- which is the more useful
+## of the two reads for this gait, and is why nothing here needed changing.
 func _control_target(index: int, root: Vector3, tip: Vector3, along: float, sag: float) -> Vector3:
 	var chord: Vector3 = tip - root
 	var length: float = chord.length()
