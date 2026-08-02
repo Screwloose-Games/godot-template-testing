@@ -1,6 +1,6 @@
 name: Create Ambient Sound File
 description: Template for creating a new sound effect file for the game.
-title: "Create sound effect for {{sound effect name}}"
+title: "Create sound effect for {sound effect name}"
 labels: [audio-ambient, audio]
 body:
   - type: textarea

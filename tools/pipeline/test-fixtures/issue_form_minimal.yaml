@@ -1,0 +1,37 @@
+# A deliberately awkward issue form, for the edge cases that should not require
+# editing a template artists depend on:
+#   - a field with no `id:` anywhere, so the id has to come from the label
+#   - no field that could be read as a filepath
+#   - a required field whose default is a checklist, and one with prose
+name: Minimal test form
+description: Fixture for test_issue_forms.py. Not a real template.
+title: "Test form for {thing}"
+labels:
+  - test
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Prose that is printed, never collected.
+
+  - type: input
+    attributes:
+      label: No id here
+      description: The id has to be derived from this label.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      value: "example prose that is not an answer"
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      id: subtasks
+      label: Subtasks
+      value: |
+        - [ ] a box to tick
+    validations:
+      required: true

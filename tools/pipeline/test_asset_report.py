@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for asset_report.py.
+"""Tests for pipeline_cli/board.py, the asset board reader.
 
 Runs standalone (`python tools/pipeline/test_asset_report.py`) like the sibling
 test files, and also under pytest.
@@ -18,13 +18,16 @@ delivered asset.
 from __future__ import annotations
 
 import contextlib
-import importlib.util
 import io
 import json
 import sys
 from pathlib import Path
 
-import yaml
+# The local alias keeps every assertion below reading as `report.x`, which is
+# what it was called when this module lived at tools/pipeline/asset_report.py.
+from pipeline_cli import board as report
+from pipeline_cli import cli
+from pipeline_cli.common import EXIT_CANNOT_RUN, load_doc
 
 TOOLS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_DIR.parents[1]
@@ -33,22 +36,8 @@ RECORDING = FIXTURES / "project_items.json"
 DOC_PATH = REPO_ROOT / "documentation" / "pipeline" / "pipeline.yaml"
 
 
-def _load_module():
-    path = TOOLS_DIR / "asset_report.py"
-    spec = importlib.util.spec_from_file_location("asset_report", path)
-    module = importlib.util.module_from_spec(spec)
-    # Registering before exec matters: @dataclass resolves annotations through
-    # sys.modules, and without this the import fails with a bare AttributeError.
-    sys.modules["asset_report"] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-report = _load_module()
-
-
 def load_conventions():
-    return report.load_conventions(yaml.safe_load(DOC_PATH.read_text(encoding="utf-8")))
+    return report.load_conventions(load_doc(DOC_PATH))
 
 
 def load_items():
@@ -62,9 +51,10 @@ def item_by_number(items, number):
 
 
 def run_cli(argv) -> str:
+    """Drive the real entry point, so these assertions cover the wiring too."""
     buffer = io.StringIO()
     with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(io.StringIO()):
-        code = report.main(argv)
+        code = cli.main(["asset", "list", *argv])
     assert code == 0, f"exit {code}"
     return buffer.getvalue()
 
@@ -385,8 +375,8 @@ def test_recording_that_runs_out_of_pages_raises_transport_error():
 
 def test_missing_recording_exits_cannot_run():
     with contextlib.redirect_stderr(io.StringIO()):
-        code = report.main(["--from-json", str(FIXTURES / "does_not_exist.json")])
-    assert code == report.EXIT_CANNOT_RUN
+        code = cli.main(["asset", "list", "--from-json", str(FIXTURES / "does_not_exist.json")])
+    assert code == EXIT_CANNOT_RUN
 
 
 # --------------------------------------------------------------------------

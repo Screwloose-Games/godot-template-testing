@@ -1,2 +1,2 @@
 priority	status	name	description	file_location
-low	delivered	character	The player character, a tentacle crawler	examples/3d/tentacle_crawler/character/character.tscn
+high	todo	player_character	Create 3D model for player_character	assets/art/character/player_character.gltf

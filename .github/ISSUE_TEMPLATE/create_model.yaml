@@ -74,7 +74,7 @@ body:
         - [ ] A pull request (PR) is created with the changes.
 
         <!-- pipeline:subtasks:start -->
-        <!-- Generated from documentation/pipeline/pipeline.yaml. Edit that file, then run tools/pipeline/render_issue_templates.py --write. -->
+        <!-- Generated from documentation/pipeline/pipeline.yaml. Edit that file, then run tools/pipeline/pipeline.py render issue-templates --write. -->
         - [ ] The placeholder matches the dimensions on the issue.
         - [ ] The placeholder uses the asset's final filename.
         - [ ] No mesh has a child mesh.

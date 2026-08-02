@@ -1,0 +1,20 @@
+# Backlog for .github/ISSUE_TEMPLATE/integrate_audio_file.yaml
+#
+# Fill in the entries below, then:
+#   python tools/pipeline/pipeline.py backlog file            # dry run -- validates every entry, creates nothing
+#   python tools/pipeline/pipeline.py backlog file --apply    # create them; the numbers are written back here
+#
+# An entry that already has an `issue:` is skipped, so this is safe to re-run.
+
+template: integrate_audio_file
+
+# Applied to every entry that does not set them itself.
+defaults:
+  # assignee: your-github-handle
+  # priority: high
+
+issues:
+  # - name: example_asset
+  #   description: Sounds to be integrated...
+  #   context: Enter the context for the each sound...
+  #   filepath: game/.../object_name/sfx/

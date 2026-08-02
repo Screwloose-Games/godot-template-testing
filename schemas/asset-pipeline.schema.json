@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Screwloose-Games/godot-jam-template/schemas/asset-pipeline.schema.json",
   "title": "Asset Pipeline Document",
-  "description": "Structured description of an asset production pipeline: its phases, the loops they run in, the artifacts they produce, and the automation that enforces each rule. Consumed by .github/scripts/validate-pipeline-doc.py and tools/pipeline/render_pipeline.py.",
+  "description": "Structured description of an asset production pipeline: its phases, the loops they run in, the artifacts they produce, and the automation that enforces each rule. Consumed by .github/scripts/validate-pipeline-doc.py and tools/pipeline/pipeline.py.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "title", "source", "roles", "tools", "images", "pipelines"],

@@ -1,6 +1,6 @@
 name: Integrate audio file(s) in engine
 description: Template for Integrating a sound 
-title: "Integrate audio files for {{audio file name}}"
+title: "Integrate audio files for {audio file name}"
 labels: [sfx, audio, blocking]
 body:
   - type: textarea

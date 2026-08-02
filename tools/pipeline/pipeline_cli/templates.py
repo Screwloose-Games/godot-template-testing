@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate issue-template subtask checklists from pipeline.yaml.
 
 Every rule in the pipeline document can carry a `checklist:` line. This script
@@ -18,33 +17,33 @@ in once and opt that template into being generated from then on.
 It reports by default and only writes with --write, so it cannot clobber
 anything you have not opted in.
 
-Usage:
-    python tools/pipeline/render_issue_templates.py           # report
-    python tools/pipeline/render_issue_templates.py --write   # apply
-    python tools/pipeline/render_issue_templates.py --check   # CI: fail if stale
+Driven by `pipeline.py render issue-templates`; see
+pipeline_cli/commands/render.py. The block builder is also reused by
+`pipeline.py issue update --resync-subtasks`, which re-renders the same markers
+inside an issue that is already open.
 """
 
 from __future__ import annotations
 
-import argparse
 import re
-import sys
+from dataclasses import dataclass
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:  # pragma: no cover
-    print("ERROR: PyYAML is required. pip install pyyaml", file=sys.stderr)
-    raise SystemExit(1)
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DOC_PATH = REPO_ROOT / "documentation" / "pipeline" / "pipeline.yaml"
+from .common import is_valid_yaml
 
 START_MARKER = "<!-- pipeline:subtasks:start -->"
 END_MARKER = "<!-- pipeline:subtasks:end -->"
+
+# Written verbatim into every managed template, so changing this text makes every
+# managed block stale and requires committing a re-render alongside the change.
 GENERATED_NOTE = (
     "<!-- Generated from documentation/pipeline/pipeline.yaml. "
-    "Edit that file, then run tools/pipeline/render_issue_templates.py --write. -->"
+    "Edit that file, then run tools/pipeline/pipeline.py render issue-templates --write. -->"
+)
+
+BLOCK_RE = re.compile(
+    rf"^([ \t]*){re.escape(START_MARKER)}.*?^[ \t]*{re.escape(END_MARKER)}[ \t]*$",
+    re.DOTALL | re.MULTILINE,
 )
 
 
@@ -91,12 +90,12 @@ def build_block(items: list[str], indent: str) -> str:
     return "\n".join(lines)
 
 
+@dataclass
 class TemplateResult:
-    def __init__(self, path: str, status: str, block: str, detail: str = ""):
-        self.path = path
-        self.status = status  # "current" | "stale" | "unmanaged" | "missing"
-        self.block = block
-        self.detail = detail
+    path: str
+    status: str  # "current" | "stale" | "unmanaged" | "missing"
+    block: str
+    detail: str = ""
 
 
 def process(template_path: Path, rel: str, items: list[str], write: bool) -> TemplateResult:
@@ -105,11 +104,7 @@ def process(template_path: Path, rel: str, items: list[str], write: bool) -> Tem
 
     text = template_path.read_text(encoding="utf-8")
 
-    match = re.search(
-        rf"^([ \t]*){re.escape(START_MARKER)}.*?^[ \t]*{re.escape(END_MARKER)}[ \t]*$",
-        text,
-        re.DOTALL | re.MULTILINE,
-    )
+    match = BLOCK_RE.search(text)
     if match is None:
         # Guess the indentation a maintainer would need, from the Subtasks block.
         indent = "        "
@@ -125,86 +120,14 @@ def process(template_path: Path, rel: str, items: list[str], write: bool) -> Tem
 
     if write:
         updated = text[: match.start()] + block + text[match.end() :]
-        try:
-            yaml.safe_load(updated)
-        except yaml.YAMLError as exc:
+        # The block lives inside a `value: |` scalar, so a mis-indented splice
+        # would produce a file GitHub silently stops rendering as a form.
+        valid, detail = is_valid_yaml(updated)
+        if not valid:
             return TemplateResult(
-                rel, "stale", block, f"refusing to write - result is not valid YAML: {exc}"
+                rel, "stale", block, f"refusing to write - result is not valid YAML: {detail}"
             )
-        template_path.write_text(updated, encoding="utf-8")
+        template_path.write_text(updated, encoding="utf-8", newline="\n")
         return TemplateResult(rel, "current", block, "updated")
 
     return TemplateResult(rel, "stale", block)
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--doc", type=Path, default=DOC_PATH)
-    parser.add_argument("--write", action="store_true", help="update managed blocks in place")
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="exit non-zero if any managed block is out of date (CI mode)",
-    )
-    args = parser.parse_args(argv)
-
-    doc = yaml.safe_load(args.doc.read_text(encoding="utf-8"))
-    checklists = collect_checklists(doc)
-
-    if not checklists:
-        print("No issue templates are referenced with checklist rules.")
-        return 0
-
-    results = [
-        process(REPO_ROOT / rel, rel, items, args.write) for rel, items in checklists.items()
-    ]
-
-    stale = [r for r in results if r.status == "stale"]
-    missing = [r for r in results if r.status == "missing"]
-    unmanaged = [r for r in results if r.status == "unmanaged"]
-    current = [r for r in results if r.status == "current"]
-
-    for result in current:
-        suffix = f" ({result.detail})" if result.detail else ""
-        print(f"  ok         {result.path}{suffix}")
-    for result in stale:
-        print(f"  STALE      {result.path}")
-        if result.detail:
-            print(f"             {result.detail}")
-    for result in missing:
-        print(f"  MISSING    {result.path} - {result.detail}")
-
-    if unmanaged:
-        print(
-            f"\n{len(unmanaged)} template(s) have no managed block yet. They were not "
-            "modified. To let this script maintain a template's checklist, paste the "
-            "block below into its Subtasks field:\n"
-        )
-        for result in unmanaged:
-            print(f"--- {result.path} ---")
-            print(result.block)
-            print()
-
-    if missing:
-        print(
-            "\nA template referenced by pipeline.yaml does not exist.",
-            file=sys.stderr,
-        )
-        return 1
-
-    if stale and args.check:
-        print(
-            f"\n{len(stale)} managed block(s) are out of date with pipeline.yaml.\n"
-            "Run: python tools/pipeline/render_issue_templates.py --write",
-            file=sys.stderr,
-        )
-        return 1
-
-    if stale and not args.write:
-        print("\nRun with --write to update them.")
-
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

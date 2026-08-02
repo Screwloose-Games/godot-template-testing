@@ -6,7 +6,8 @@
 # derived from; it is now a historical snapshot. Edit this file, then run:
 #
 #     python .github/scripts/validate-pipeline-doc.py
-#     python tools/pipeline/render_pipeline.py
+#     python tools/pipeline/pipeline.py render pipeline
+#     python tools/pipeline/pipeline.py render issue-templates --write
 #
 # See documentation/pipeline/README.md.
 

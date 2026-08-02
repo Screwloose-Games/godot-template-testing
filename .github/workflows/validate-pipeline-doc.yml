@@ -41,10 +41,22 @@ jobs:
       - name: Test validator
         run: python .github/scripts/test_validate_pipeline_doc.py
 
+      # Same reasoning one directory over: these are the tests for the CLI that
+      # renders and checks everything below.
+      - name: Test pipeline CLI
+        run: |
+          python tools/pipeline/test_common.py
+          python tools/pipeline/test_pipeline_cli.py
+          python tools/pipeline/test_asset_report.py
+          python tools/pipeline/test_asset_list.py
+          python tools/pipeline/test_issue_forms.py
+          python tools/pipeline/test_issue_commands.py
+          python tools/pipeline/test_backlog.py
+
       # Confirms the screenshots in documentation/pipeline/images/ are still
       # byte-identical to the payloads embedded in the Miro SVG they came from.
       - name: Check extracted images match the source diagram
-        run: python tools/pipeline/extract_pipeline_images.py --check
+        run: python tools/pipeline/pipeline.py extract images --check
 
       # Schema, plus every cross-reference the schema cannot express: edge
       # endpoints, reachability, image hashes, enforcement paths, regex examples,
@@ -56,12 +68,19 @@ jobs:
       # PIPELINE.md is generated. If it does not match what pipeline.yaml renders
       # to, the human-readable view and the machine-readable source disagree.
       - name: Check PIPELINE.md is up to date
-        run: python tools/pipeline/render_pipeline.py --check
+        run: python tools/pipeline/pipeline.py render pipeline --check
 
       # Only checks templates that have opted in by carrying the markers;
       # templates without them are reported and left alone.
       - name: Check generated issue-template blocks are up to date
-        run: python tools/pipeline/render_issue_templates.py --check
+        run: python tools/pipeline/pipeline.py render issue-templates --check
+
+      # documentation/pipeline/backlog/*.yaml is deliberately not gated here.
+      # Those files are hand-authored input, so there is nothing to diff them
+      # against, and the obvious gate -- `backlog file` without --apply -- still
+      # resolves organization field ids over the network to show the commands it
+      # would run. That needs a scope this workflow's repo-scoped token does not
+      # have, the same reason `asset list --check` is a local command.
 
       - name: Comment PR
         if: ${{ !cancelled() && steps.validate-pipeline-doc.outputs.metadata != '' }}

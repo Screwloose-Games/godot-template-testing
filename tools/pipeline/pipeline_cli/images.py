@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Extract the screenshots embedded in the Miro asset-pipeline SVG export.
 
 The SVG at ``documentation/SolarPunk Jam - Asset Pipeline.svg`` is a Miro board
@@ -16,26 +15,19 @@ match the SVG they came from.
 
 Stdlib only, like the sibling validators in ``.github/scripts/``.
 
-Usage:
-    python tools/pipeline/extract_pipeline_images.py
-    python tools/pipeline/extract_pipeline_images.py --check
-    python tools/pipeline/extract_pipeline_images.py --emit-yaml
+Driven by `pipeline.py extract images`; see pipeline_cli/commands/extract.py.
 """
 
 from __future__ import annotations
 
-import argparse
 import base64
 import binascii
 import hashlib
 import re
 import struct
-import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-SVG_PATH = REPO_ROOT / "documentation" / "SolarPunk Jam - Asset Pipeline.svg"
-IMAGES_DIR = REPO_ROOT / "documentation" / "pipeline" / "images"
+from .common import IMAGES_DIR, SVG_PATH
 
 # Maps the SVG's own image ids to the names we want on disk.  The SVG ids are
 # export-order artifacts (`IMG_0`, `IMG_2`, ...) and carry no meaning, so the
@@ -200,72 +192,3 @@ def emit_yaml(images: list[ExtractedImage]) -> str:
             lines.append(f"      board_x: {image.position[0]:.0f}")
             lines.append(f"      board_y: {image.position[1]:.0f}")
     return "\n".join(lines)
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="verify the files on disk match the SVG; write nothing",
-    )
-    parser.add_argument(
-        "--emit-yaml",
-        action="store_true",
-        help="print the images: block for pipeline.yaml",
-    )
-    args = parser.parse_args(argv)
-
-    try:
-        images = extract()
-    except ExtractionError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
-
-    if args.emit_yaml:
-        print(emit_yaml(images))
-        return 0
-
-    problems: list[str] = []
-    written = 0
-    unchanged = 0
-
-    if not args.check:
-        IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-
-    for image in images:
-        relative = image.path.relative_to(REPO_ROOT).as_posix()
-        if image.path.is_file():
-            on_disk = hashlib.sha256(image.path.read_bytes()).hexdigest()
-            if on_disk == image.sha256:
-                unchanged += 1
-                print(f"  ok       {relative}")
-                continue
-            if args.check:
-                problems.append(f"{relative} differs from the SVG payload")
-                continue
-
-        if args.check:
-            problems.append(f"{relative} is missing")
-            continue
-
-        image.path.write_bytes(image.data)
-        written += 1
-        print(f"  written  {relative}  ({image.width}x{image.height}, {image.sha256[:12]})")
-
-    if problems:
-        print("\nExtracted images are out of sync with the SVG:", file=sys.stderr)
-        for problem in problems:
-            print(f"  - {problem}", file=sys.stderr)
-        print(
-            "\nRun: python tools/pipeline/extract_pipeline_images.py",
-            file=sys.stderr,
-        )
-        return 1
-
-    print(f"\n{len(images)} image(s): {written} written, {unchanged} already current.")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

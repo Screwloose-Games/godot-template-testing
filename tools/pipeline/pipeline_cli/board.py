@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """List assets tracked on the GitHub project board and whether they have landed.
 
 Project 38 carries a custom text column named `filepath`. That column is the one
@@ -23,38 +22,31 @@ This is a report, not a gate. It reads and never writes anything but --out.
 Requires the read:project scope, which is not granted by default:
     gh auth refresh -h github.com -s read:project
 
-Usage:
-    python tools/pipeline/asset_report.py                         # aligned text
-    python tools/pipeline/asset_report.py --with-paths            # hide blank rows
-    python tools/pipeline/asset_report.py --format markdown
-    python tools/pipeline/asset_report.py --format json --out report.json
-    python tools/pipeline/asset_report.py --format json | jq -r '.items[].file_path'
+Driven by `pipeline.py asset list`; see pipeline_cli/commands/asset.py.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import posixpath
 import re
-import shutil
 import subprocess
 import sys
-import urllib.error
-import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
-try:
-    import yaml
-except ImportError:  # pragma: no cover
-    print("ERROR: PyYAML is required. pip install pyyaml", file=sys.stderr)
-    raise SystemExit(1)
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DOC_PATH = REPO_ROOT / "documentation" / "pipeline" / "pipeline.yaml"
+from .common import DocumentError, load_doc, md_cell
+from .github import (  # noqa: F401 -- re-exported so board is the one import for callers
+    GhCliClient,
+    GraphQLClient,
+    RecordedClient,
+    TransportError,
+    UrllibClient,
+    choose_client,
+    explain_transport_error,
+)
 
 DEFAULT_ORG = "Screwloose-Games"
 DEFAULT_PROJECT_NUMBER = 38
@@ -62,9 +54,6 @@ DEFAULT_PAGE_SIZE = 100
 
 # The board's own column. Renameable from the project UI, hence --path-field.
 DEFAULT_PATH_FIELD = "filepath"
-
-# Exit code for "the tool could not run", as distinct from "the report is empty".
-EXIT_CANNOT_RUN = 2
 
 
 # -- GraphQL ---------------------------------------------------------------
@@ -83,9 +72,15 @@ _PROJECT_QUERY_TEMPLATE = """
 query($org: String!, $projectNumber: Int!, $cursor: String, $pageSize: Int!) {
   organization(login: $org) {
     projectV2(number: $projectNumber) {
+      id
       title
       url
-      fields(first: 50) { nodes { ... on ProjectV2FieldCommon { id name dataType } } }
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2FieldCommon { id name dataType }
+          ... on ProjectV2SingleSelectField { id name options { id name } }
+        }
+      }
       items(first: $pageSize, after: $cursor) {
         totalCount
         pageInfo { hasNextPage endCursor }
@@ -182,189 +177,6 @@ def build_pr_files_query(numbers: list[int]) -> str:
         "  }\n"
         "}"
     )
-
-
-class TransportError(RuntimeError):
-    """The request could not be made or came back unusable."""
-
-
-class GraphQLClient(Protocol):
-    def execute(self, query: str, variables: dict[str, Any]) -> dict[str, Any]: ...
-
-
-class GhCliClient:
-    """Shell out to `gh api graphql`.
-
-    gh already holds the token, handles org SSO authorization and host config,
-    and reports rate limits properly. Reimplementing that here would mean a
-    GITHUB_TOKEN dance the artists this script serves have not set up.
-    """
-
-    name = "gh"
-
-    def __init__(self, executable: str = "gh") -> None:
-        self.executable = executable
-
-    def execute(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
-        # -F reads the @- placeholder from stdin (-f would pass "@-" literally)
-        # and sidesteps shell quoting of a multi-line query entirely.
-        args = [self.executable, "api", "graphql", "-F", "query=@-"]
-        for key, value in variables.items():
-            if value is None:
-                continue
-            if isinstance(value, bool) or isinstance(value, int):
-                args += ["-F", f"{key}={value}"]
-            else:
-                # -f keeps strings raw. A cursor that happens to look numeric
-                # must not be type-inferred into an Int.
-                args += ["-f", f"{key}={value}"]
-
-        try:
-            proc = subprocess.run(
-                args, input=query, capture_output=True, text=True, encoding="utf-8", check=False
-            )
-        except FileNotFoundError as exc:
-            raise TransportError(f"could not run {self.executable!r}: {exc}") from exc
-
-        if proc.stdout.strip():
-            try:
-                payload = json.loads(proc.stdout)
-            except json.JSONDecodeError:
-                payload = None
-            if payload is not None:
-                return _unwrap(payload, proc.stderr)
-
-        raise TransportError(proc.stderr.strip() or f"gh exited {proc.returncode} with no output")
-
-
-class UrllibClient:
-    """Stdlib fallback for containers that have a token but no gh.
-
-    Deliberately not `requests`: it appears in exactly one file in this repo and
-    adding a second consumer would create an install story that does not exist.
-    """
-
-    name = "GITHUB_TOKEN"
-
-    def __init__(self, token: str, endpoint: str = "https://api.github.com/graphql") -> None:
-        self.token = token
-        self.endpoint = endpoint
-
-    def execute(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
-        body = json.dumps({"query": query, "variables": variables}).encode("utf-8")
-        request = urllib.request.Request(
-            self.endpoint,
-            data=body,
-            headers={
-                "Authorization": f"bearer {self.token}",
-                "Content-Type": "application/json",
-                "User-Agent": "godot-jam-template-asset-report",
-            },
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=30) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            raise TransportError(str(exc)) from exc
-        return _unwrap(payload, "")
-
-
-_ALIAS_RE = re.compile(r"(pr\d+): pullRequest\(number: (\d+)\)")
-
-
-class RecordedClient:
-    """Replay a --dump-json recording so the tests never touch the network.
-
-    Serves both query shapes: board pages in order, and PR file lists looked up
-    by number. The aliases are re-derived from the query text so a recording
-    stays valid however the batches happen to be split up on replay.
-    """
-
-    name = "recording"
-
-    def __init__(
-        self, pages: list[dict[str, Any]], pr_files: dict[str, dict[str, list[str]]] | None = None
-    ) -> None:
-        self.pages = list(pages)
-        self.pr_files = pr_files or {}
-        self.calls = 0
-        self.pr_calls = 0
-
-    @classmethod
-    def from_file(cls, path: Path) -> RecordedClient:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(payload, list):
-            return cls(payload)
-        return cls(payload.get("pages", [payload]), payload.get("pr_files"))
-
-    def execute(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
-        if "pullRequest(number:" in query:
-            self.pr_calls += 1
-            repo = f"{variables.get('owner', '')}/{variables.get('name', '')}"
-            table = self.pr_files.get(repo, {})
-            repository: dict[str, Any] = {}
-            for alias, number in _ALIAS_RE.findall(query):
-                paths = table.get(str(number))
-                if paths is None:
-                    continue
-                repository[alias] = {
-                    "files": {
-                        "pageInfo": {"hasNextPage": False},
-                        "nodes": [{"path": path} for path in paths],
-                    }
-                }
-            return {"repository": repository}
-
-        if self.calls >= len(self.pages):
-            raise TransportError(
-                f"recording has {len(self.pages)} page(s) but a {self.calls + 1}th was requested"
-            )
-        page = self.pages[self.calls]
-        self.calls += 1
-        return page
-
-
-def _unwrap(payload: dict[str, Any], stderr: str) -> dict[str, Any]:
-    """Turn a GraphQL error envelope into a TransportError with a usable message."""
-    errors = payload.get("errors")
-    if errors:
-        messages = [str(err.get("message", err)) for err in errors]
-        raise TransportError("; ".join(dict.fromkeys(messages)) or stderr.strip())
-    if "data" not in payload:
-        raise TransportError(stderr.strip() or "response contained no data")
-    return payload["data"]
-
-
-def explain_transport_error(message: str) -> str:
-    """The two likely first-run failures need different fixes, so name them."""
-    lowered = message.lower()
-    if "read:project" in lowered or "insufficient_scopes" in lowered:
-        return (
-            "ERROR: your GitHub token cannot read Projects.\n"
-            "Run:  gh auth refresh -h github.com -s read:project"
-        )
-    if "saml" in lowered or "sso" in lowered:
-        return (
-            "ERROR: this token is not authorized for the organization's SAML SSO.\n"
-            "Run:  gh auth login   and authorize the org in the browser when prompted."
-        )
-    if "could not run" in lowered or ("not found" in lowered and "gh" in lowered):
-        return (
-            "ERROR: the GitHub CLI is not available.\n"
-            "Install gh, or set GITHUB_TOKEN and re-run."
-        )
-    return f"ERROR: could not read the project board.\n{message}"
-
-
-def choose_client(prefer_token: str | None) -> GraphQLClient:
-    if prefer_token:
-        return UrllibClient(prefer_token)
-    if shutil.which("gh"):
-        return GhCliClient()
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    if token:
-        return UrllibClient(token)
-    raise TransportError("could not run 'gh': not on PATH, and no GITHUB_TOKEN is set")
 
 
 # -- Reading the filepath column -------------------------------------------
@@ -810,11 +622,24 @@ def project_meta(pages: list[dict]) -> dict[str, Any]:
         return {}
     project = ((pages[0].get("organization") or {}).get("projectV2")) or {}
     return {
+        "id": project.get("id") or "",
         "title": project.get("title") or "",
         "url": project.get("url") or "",
         "total_items": ((project.get("items") or {}).get("totalCount")),
+        # id and options are carried so `issue update --status` can name the
+        # column and the option it is setting. A recording made before they were
+        # selected simply has None there, which is why nothing requires them.
         "fields": [
-            {"name": node.get("name"), "dataType": node.get("dataType")}
+            {
+                "name": node.get("name"),
+                "dataType": node.get("dataType"),
+                "id": node.get("id"),
+                "options": {
+                    option["name"]: option["id"]
+                    for option in (node.get("options") or [])
+                    if isinstance(option, dict) and option.get("name") and option.get("id")
+                },
+            }
             for node in (project.get("fields") or {}).get("nodes") or []
             if isinstance(node, dict) and node.get("name")
         ],
@@ -1001,7 +826,8 @@ def render_text(rows: list[Row], meta: dict, notes: list[str]) -> str:
 
 
 def _md_cell(value: str) -> str:
-    return " ".join(str(value).split()).replace("|", "\\|") or "-"
+    """A blank cell would collapse the column, so an empty value reads as a dash."""
+    return md_cell(value, empty="-")
 
 
 def render_markdown(rows: list[Row], meta: dict, notes: list[str]) -> str:
@@ -1105,37 +931,34 @@ def render_json(rows: list[Row], meta: dict, notes: list[str], context: dict) ->
     return json.dumps(payload, indent=2) + "\n"
 
 
-# -- CLI -------------------------------------------------------------------
+# -- Collecting a report ---------------------------------------------------
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--org", default=DEFAULT_ORG)
-    parser.add_argument("--project", type=int, default=DEFAULT_PROJECT_NUMBER)
-    parser.add_argument("--doc", type=Path, default=DOC_PATH)
-    parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
-    parser.add_argument("--format", choices=("text", "markdown", "json"), default="text")
-    parser.add_argument("--out", type=Path, help="write the report here instead of stdout")
-    parser.add_argument("--page-size", type=int, default=DEFAULT_PAGE_SIZE)
-    parser.add_argument(
-        "--path-field", default=DEFAULT_PATH_FIELD, help="board column holding the asset path"
-    )
-    parser.add_argument(
-        "--with-paths", action="store_true", help="list only items whose filepath column is set"
-    )
-    parser.add_argument("--no-pr-files", action="store_true", help="skip the changed-file lookups")
-    parser.add_argument("--cache", type=Path, help="cache PR file lists here between runs")
-    parser.add_argument("--from-json", type=Path, help="replay a --dump-json recording")
-    parser.add_argument("--dump-json", type=Path, help="record the raw project pages here")
-    parser.add_argument("--token", help="use this token instead of the gh CLI")
-    args = parser.parse_args(argv)
+@dataclass
+class BoardReport:
+    """Everything a renderer needs, and the caveats that came with it.
 
+    `notes` is not decoration: an empty report and a report that could not read
+    the filepath column look identical without it.
+    """
+
+    rows: list[Row]
+    meta: dict
+    notes: list[str]
+    context: dict
+
+
+def collect(args: argparse.Namespace) -> BoardReport:
+    """Read the board and evaluate delivery, driven by the parsed CLI flags.
+
+    Raises TransportError or DocumentError rather than exiting, so the one place
+    that decides how a GitHub failure is explained stays in cli.main().
+    """
     notes: list[str] = []
 
     try:
-        doc = yaml.safe_load(args.doc.read_text(encoding="utf-8"))
-        conventions = load_conventions(doc)
-    except (OSError, yaml.YAMLError) as exc:
+        conventions = load_conventions(load_doc(args.doc))
+    except DocumentError as exc:
         conventions = Conventions()
         notes.append(f"naming rules unavailable ({exc}); filepaths were not checked")
 
@@ -1143,22 +966,13 @@ def main(argv: list[str] | None = None) -> int:
         try:
             client: GraphQLClient = RecordedClient.from_file(args.from_json)
         except (OSError, json.JSONDecodeError) as exc:
-            print(f"ERROR: could not read {args.from_json}: {exc}", file=sys.stderr)
-            return EXIT_CANNOT_RUN
+            raise DocumentError(f"could not read {args.from_json}: {exc}") from exc
         source = "recording"
     else:
-        try:
-            client = choose_client(args.token)
-        except TransportError as exc:
-            print(explain_transport_error(str(exc)), file=sys.stderr)
-            return EXIT_CANNOT_RUN
+        client = choose_client(args.token)
         source = getattr(client, "name", "live")
 
-    try:
-        pages = fetch_pages(client, args.org, args.project, args.page_size)
-    except TransportError as exc:
-        print(explain_transport_error(str(exc)), file=sys.stderr)
-        return EXIT_CANNOT_RUN
+    pages = fetch_pages(client, args.org, args.project, args.page_size)
 
     meta = project_meta(pages)
     known = {entry["name"].casefold() for entry in meta.get("fields", [])}
@@ -1233,22 +1047,4 @@ def main(argv: list[str] | None = None) -> int:
         "on_disk_repo": on_disk_repo,
         "path_field": args.path_field,
     }
-    if args.format == "json":
-        text = render_json(rows, meta, notes, context)
-    elif args.format == "markdown":
-        text = render_markdown(rows, meta, notes)
-    else:
-        text = render_text(rows, meta, notes)
-
-    if args.out:
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(text, encoding="utf-8", newline="\n")
-        print(f"Wrote {args.out}", file=sys.stderr)
-    else:
-        sys.stdout.write(text)
-
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    return BoardReport(rows, meta, notes, context)
