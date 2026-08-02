@@ -1,0 +1,76 @@
+[gd_scene load_steps=8 format=3]
+
+; The player's ship.
+;
+; A 3.0 x 1.6 x 6.0 m box at 1000 kg, which gives a yaw inertia of 3750 kg.m^2.
+; That number and the tail anchor's 3.0 m offset are what ShipController's
+; torque_max is sized against -- see the comment on that export before changing
+; either the hull size or the mass.
+;
+; Body settings that are silently wrong by default in zero gravity:
+;   gravity_scale = 0      there is no floor out here
+;   can_sleep = false      a sleeping body ignores apply_force(), so the tether
+;                          quietly stops existing until something wakes it
+;   linear_damp_mode = 1   REPLACE, so a host project's default_linear_damp
+;                          cannot add invisible drag to "Newtonian" drift
+;   angular_damp_mode = 1  REPLACE, same reason; 0.2 so a collision tumble settles
+;
+; continuous_cd stays off: at the 110 m/s soft cap a body advances 1.83 m per
+; physics step, well inside the smallest asteroid. Tunnelling risk lives on the
+; turret shots, which is why those are raycasts and not bodies.
+
+[ext_resource type="Script" path="ship_controller.gd" id="1_ship"]
+[ext_resource type="Script" path="ship_input_actions.gd" id="2_input"]
+[ext_resource type="Material" path="../../materials/ship.tres" id="3_hull_mat"]
+[ext_resource type="Script" path="../../components/damage/tether_damage.gd" id="4_damage"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_hull"]
+size = Vector3(3, 1.6, 6)
+
+[sub_resource type="BoxMesh" id="BoxMesh_nose"]
+size = Vector3(1.2, 0.9, 1.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hull"]
+size = Vector3(3, 1.6, 6)
+
+[node name="Ship" type="RigidBody3D"]
+collision_layer = 2
+collision_mask = 37
+mass = 1000.0
+gravity_scale = 0.0
+continuous_cd = false
+can_sleep = false
+linear_damp_mode = 1
+linear_damp = 0.0
+angular_damp_mode = 1
+angular_damp = 0.2
+script = ExtResource("1_ship")
+
+[node name="Hull" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_hull")
+material_override = ExtResource("3_hull_mat")
+
+[node name="Nose" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.6)
+mesh = SubResource("BoxMesh_nose")
+material_override = ExtResource("3_hull_mat")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_hull")
+
+[node name="TetherAnchor" type="Marker3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)
+
+; The hull is tougher than the crate and takes less from a hit: the run is scored
+; on the cargo, so the ship's bar exists to punish ramming, not to be the stake.
+[node name="Damage" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("4_damage")
+max_integrity = 100.0
+projectile_damage = 6.0
+impact_free_speed = 10.0
+impact_per_ms = 0.9
+
+[node name="InputActions" type="Node" parent="."]
+script = ExtResource("2_input")

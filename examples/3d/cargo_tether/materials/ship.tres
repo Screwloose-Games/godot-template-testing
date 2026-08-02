@@ -1,0 +1,10 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+; Greybox hull. Light and slightly warm so it separates from the cold rocks and
+; the near-black sky without needing a texture -- this is a GL Compatibility
+; web build, and every material here has to earn its place in the frame budget.
+
+[resource]
+albedo_color = Color(0.5, 0.53, 0.58, 1)
+metallic = 0.2
+roughness = 0.45

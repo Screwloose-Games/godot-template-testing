@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="./jeep_visuals.gd" id="1_visuals"]
+[ext_resource type="PackedScene" path="../../../../../assets/art/3d/vehicles/jeep_turret/sm_jeep_turret.tscn" id="2_model"]
+
+[node name="JeepVisuals" type="Node3D"]
+script = ExtResource("1_visuals")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+unique_name_in_owner = true
+
+[node name="HeadlightL" type="SpotLight3D" parent="."]
+unique_name_in_owner = true
+visible = false
+
+[node name="HeadlightR" type="SpotLight3D" parent="."]
+unique_name_in_owner = true
+visible = false

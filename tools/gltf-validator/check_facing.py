@@ -9,7 +9,7 @@ pygltflib, no trimesh, no Docker image.
 
 Usage:
     python tools/gltf-validator/check_facing.py
-    python tools/gltf-validator/check_facing.py --path assets/3d
+    python tools/gltf-validator/check_facing.py --path assets/art/3d
     python tools/gltf-validator/check_facing.py --expect-facing +Z --expect-up +Y
 """
 

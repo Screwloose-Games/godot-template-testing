@@ -1,0 +1,7 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Personal Claude Code overrides. Note: do NOT ignore all of .claude/ --
+# .claude/settings.json carries the shared GDScript check hook.
+.claude/settings.local.json

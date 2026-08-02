@@ -18,8 +18,8 @@ body:
     attributes:
       label: Save File Path
       description: Provide the directory path where the .aseprite files should be saved.
-      placeholder: "Enter the full file path, e.g., game/{game_object}/animations..."
-      value: "game/{game_object}/animations/"
+      placeholder: "Enter the full file path, e.g., assets/art/2d/{game_object}/animations..."
+      value: "assets/art/2d/{game_object}/animations/"
     validations:
       required: true
 
@@ -28,7 +28,7 @@ body:
       value: |
         ## Acceptance Criteria:
 
-        - [ ] An .aseprite file is created and saved in the correct directory: `game/{file_path}/{game_object}/{game_object}.aseprite`.
+        - [ ] An .aseprite file is created and saved in the correct directory: `assets/art/2d/{file_path}/{game_object}/{game_object}.aseprite`.
         - [ ] Each animation is defined as a tag within the .aseprite file.
         - [ ] Tags for one-shot animations are configured with `repeat: 1`.
         - [ ] Files follow naming conventions: lowercase, underscore-separated, no spaces.
@@ -45,6 +45,6 @@ body:
         - [ ] Create the .aseprite file for the animation.
         - [ ] Add each animation as a tag in the .aseprite file.
         - [ ] Configure one-shot tags with `repeat: 1` where applicable.
-        - [ ] An .aseprite file is created and saved in the correct directory: `game/{file_path}/{game_object}/{game_object}.aseprite`.
+        - [ ] An .aseprite file is created and saved in the correct directory: `assets/art/2d/{file_path}/{game_object}/{game_object}.aseprite`.
         - [ ] Files follow naming conventions: lowercase, underscore-separated, no spaces.
         - [ ] Submit a pull request with the .aseprite file, `.import` file, and all changes.

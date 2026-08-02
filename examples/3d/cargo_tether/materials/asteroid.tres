@@ -1,0 +1,10 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+; Every asteroid in the field shares this one material, which is what lets the
+; rocks batch. Do not add per-rock variants: shape variety comes from the
+; per-instance scale and random basis the generator writes, which costs nothing.
+
+[resource]
+albedo_color = Color(0.29, 0.28, 0.3, 1)
+metallic = 0.0
+roughness = 0.9

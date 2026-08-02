@@ -32,7 +32,7 @@ import gltf_document  # noqa: E402
 import gltf_measure  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-EXAMPLE_GLTF = REPO_ROOT / "assets/3d/example_cubes_facing/sm_example_cubes_facing.gltf"
+EXAMPLE_GLTF = REPO_ROOT / "assets/art/3d/example_cubes_facing/sm_example_cubes_facing.gltf"
 ROTATED_FIXTURE = Path(__file__).resolve().parent / "test-fixtures/unapplied_rotation_90z.gltf"
 WOLF_GLB = (
     REPO_ROOT

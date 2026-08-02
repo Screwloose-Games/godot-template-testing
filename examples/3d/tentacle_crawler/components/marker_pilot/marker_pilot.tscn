@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+; The player's intent, as one node.
+;
+; The ROOT IS THE MARKER3D -- not a Node3D wrapper with a marker inside it. Two
+; nodes would mean two things that could have moved, and every "why is the creature
+; over there" debugging session would start by working out which.
+;
+; The actions node is a child rather than a script on the root because the root
+; already has a script, and because it makes the registration lifetime exactly the
+; lifetime of this scene: actions appear in _enter_tree and are erased in
+; _exit_tree, refcounted so two pilots do not erase each other's bindings.
+;
+; Nothing here edits the host project.godot. That is rule 3 of self-containment.
+
+[ext_resource type="Script" path="marker_pilot.gd" id="1_pilot"]
+[ext_resource type="Script" path="crawler_input_actions.gd" id="2_actions"]
+
+[node name="MarkerPilot" type="Marker3D"]
+script = ExtResource("1_pilot")
+
+[node name="InputActions" type="Node" parent="."]
+script = ExtResource("2_actions")

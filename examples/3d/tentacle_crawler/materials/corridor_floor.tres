@@ -1,0 +1,9 @@
+; A half-stop darker than the walls, purely so "which way is down" is readable in
+; a zero-g tube where the creature is as happy on the ceiling as the floor. It has
+; no gameplay meaning -- nothing here uses a floor normal for anything.
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+albedo_color = Color(0.44, 0.45, 0.48, 1)
+metallic = 0.0
+roughness = 0.95

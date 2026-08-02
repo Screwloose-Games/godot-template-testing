@@ -1,0 +1,13 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+; Turret shots. Unlit and emissive so a tracer reads against black at 200 m
+; without costing a light, and shadows off because 96 shadow-casting tracers
+; would be the most expensive thing in the frame.
+
+[resource]
+shading_mode = 0
+albedo_color = Color(1, 0.42, 0.2, 1)
+emission_enabled = true
+emission = Color(1, 0.5, 0.22, 1)
+emission_energy_multiplier = 3.0
+disable_receive_shadows = true

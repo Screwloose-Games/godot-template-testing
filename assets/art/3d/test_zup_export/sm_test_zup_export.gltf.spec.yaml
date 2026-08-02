@@ -1,0 +1,10 @@
+# DELIBERATELY WRONG: a Z-up export that skipped Blender's axis conversion. The
+# geometry is authored tall on Z and a -90 degree rotation about X is left on the
+# node to stand it up, which is exactly what an unapplied transform looks like.
+#
+# Expected: FAIL unapplied_transforms (rotation on the node chain) and
+# FAIL up_direction (the chain sends +Y to -Z, not +Y).
+#
+# Size keys are omitted on purpose so the two axis failures stand alone.
+up_direction: "+Y"
+facing_direction: "-Z"

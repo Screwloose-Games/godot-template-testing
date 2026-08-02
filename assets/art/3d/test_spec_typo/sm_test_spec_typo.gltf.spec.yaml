@@ -1,0 +1,14 @@
+# DELIBERATELY WRONG: `poly_budget` is not a key this validator knows -- the real
+# one is `poly_count_budget`. The schema sets additionalProperties: false
+# precisely so this is an error instead of a silent no-op, because an
+# unrecognised key is a check that never runs.
+#
+# Every other key here describes the model accurately.
+#
+# Expected: FAIL spec_schema.
+width: 1.0
+height: 1.0
+depth: 1.0
+poly_budget: 100
+up_direction: "+Y"
+facing_direction: "-Z"

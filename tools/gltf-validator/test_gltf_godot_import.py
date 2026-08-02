@@ -6,7 +6,7 @@ other validators, and also under pytest. Needs only numpy.
 
 The load-bearing case is `test_a_steering_wheel_is_caught`. That exact name --
 `steering_wheel`, an ordinary description of an ordinary object -- silently
-imported as a VehicleWheel3D while building assets/3d/vehicles/jeep_turret, and
+imported as a VehicleWheel3D while building assets/art/3d/vehicles/jeep_turret, and
 was only found by reading the imported scene tree in the editor. The file was
 valid glTF throughout, so every other check in this repo passed it. If the
 underscore matching in `node_suffix` ever regresses, that test is what notices.
@@ -177,7 +177,7 @@ def test_the_shipped_jeep_passes_every_check():
     """An end-to-end pin against a real, committed model."""
     import gltf_document
 
-    path = REPO_ROOT / "assets/3d/vehicles/jeep_turret/sm_jeep_turret.gltf"
+    path = REPO_ROOT / "assets/art/3d/vehicles/jeep_turret/sm_jeep_turret.gltf"
     if not path.exists():  # the asset may not be present in every checkout
         return
     doc = gltf_document.load_document(str(path))

@@ -1,0 +1,10 @@
+# DELIBERATELY WRONG: declares 2m on every axis but the geometry is a 1m cube,
+# and it is authored 0.5m above the origin while claiming to rest on the ground.
+#
+# Expected: FAIL width, FAIL height, FAIL depth, FAIL rests_on_ground.
+width: 2.0
+height: 2.0
+depth: 2.0
+up_direction: "+Y"
+facing_direction: "-Z"
+rests_on_ground: true

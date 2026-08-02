@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+; The ring and its trigger are both built in DeliveryDock._ready(). Nothing to
+; author here beyond the material, which is what keeps the radius and segment
+; count readable as numbers instead of baked into twelve transforms.
+
+[ext_resource type="Script" path="delivery_dock.gd" id="1_dock"]
+[ext_resource type="Material" path="../materials/dock.tres" id="2_dock_mat"]
+
+[node name="DeliveryDock" type="Node3D"]
+script = ExtResource("1_dock")
+material = ExtResource("2_dock_mat")

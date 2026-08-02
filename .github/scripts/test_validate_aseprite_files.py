@@ -236,26 +236,43 @@ def test_oversized_canvas_and_png():
 
 def test_path_convention():
     with tempfile.TemporaryDirectory() as d:
-        good = os.path.join(d, "game", "spider", "animations")
+        root = os.path.join(d, "assets", "art", "2d")
+        good = os.path.join(root, "spider", "animations")
         os.makedirs(good)
         p = os.path.join(good, "spider.aseprite")
         build_aseprite(p, [("attack", 0, 1, 0, 1)])
         touch_import(p)
         assert errors_for(p) == [], errors_for(p)
 
-        bad = os.path.join(d, "game", "spider", "animations")
-        p2 = os.path.join(bad, "wrong_name.aseprite")
+        # The shallower form is accepted too: stem matches its parent.
+        shallow = os.path.join(root, "beetle")
+        os.makedirs(shallow)
+        p_shallow = os.path.join(shallow, "beetle.aseprite")
+        build_aseprite(p_shallow, [("attack", 0, 1, 0, 1)])
+        touch_import(p_shallow)
+        assert errors_for(p_shallow) == [], errors_for(p_shallow)
+
+        p2 = os.path.join(good, "wrong_name.aseprite")
         build_aseprite(p2, [("attack", 0, 1, 0, 1)])
         touch_import(p2)
         assert any("does not follow the convention" in e for e in errors_for(p2))
 
-        # Outside game/ the convention does not apply.
+        # Outside assets/art/2d/ the convention does not apply.
         outside = os.path.join(d, "prototypes")
         os.makedirs(outside)
         p3 = os.path.join(outside, "whatever.aseprite")
         build_aseprite(p3, [("attack", 0, 1, 0, 1)])
         touch_import(p3)
         assert errors_for(p3) == [], errors_for(p3)
+
+        # The root is multi-segment, so a lookalike sibling must stay exempt --
+        # a plain substring test would sweep assets/art/2d_wip/ in.
+        lookalike = os.path.join(d, "assets", "art", "2d_wip")
+        os.makedirs(lookalike)
+        p4 = os.path.join(lookalike, "whatever.aseprite")
+        build_aseprite(p4, [("attack", 0, 1, 0, 1)])
+        touch_import(p4)
+        assert errors_for(p4) == [], errors_for(p4)
     print("PASS test_path_convention")
 
 

@@ -1,0 +1,31 @@
+[gd_scene load_steps=2 format=3]
+
+; The chase camera.
+;
+; Only three nodes, and that is the point: the yaw/pitch Euler chain the jeep's
+; rig uses is gone, because it is anchored to world up and gimbal-locks the
+; moment the ship flies straight up. The rig node itself carries the orientation
+; as a slerped Quaternion, so there is no pole to hit.
+;
+; SpringArm3D pushes its children along its own +Z, i.e. behind the rig, and it
+; masks OBSTACLE|TURRET (33) only -- never the ship it follows, and never the
+; cargo it is trying to keep in frame.
+;
+; far = 1200 because the starfield in the generated course sits on a radius-900
+; sphere. Cutting it closer makes the sky vanish and the speed cue with it.
+
+[ext_resource type="Script" path="ship_chase_rig.gd" id="1_rig"]
+
+[node name="ShipChaseRig" type="Node3D"]
+script = ExtResource("1_rig")
+
+[node name="SpringArm" type="SpringArm3D" parent="."]
+unique_name_in_owner = true
+collision_mask = 33
+spring_length = 9.0
+margin = 0.3
+
+[node name="Camera" type="Camera3D" parent="SpringArm"]
+unique_name_in_owner = true
+far = 1200.0
+fov = 70.0

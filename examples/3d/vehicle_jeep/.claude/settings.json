@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "statusMessage": "Checking GDScript...",
+            "timeout": 90,
+            "command": "$raw=[Console]::In.ReadToEnd(); try{$f=($raw|ConvertFrom-Json).tool_input.file_path}catch{exit 0}; if(-not $f){exit 0}; if($f -notmatch '\\.gd$'){exit 0}; $root=if($env:CLAUDE_PROJECT_DIR){$env:CLAUDE_PROJECT_DIR}else{(Get-Location).Path}; $s=Join-Path $root 'examples/3d/vehicle_jeep/tools/check_gd.ps1'; if(-not (Test-Path -LiteralPath $s)){$s=Join-Path $root 'tools/check_gd.ps1'}; if(-not (Test-Path -LiteralPath $s)){exit 0}; & $s -Path $f; exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ]
+  }
+}

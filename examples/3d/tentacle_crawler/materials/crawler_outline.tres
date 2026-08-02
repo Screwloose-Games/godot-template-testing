@@ -1,0 +1,19 @@
+; Inverted-hull outline. A copy of the body mesh, scaled up ~8%, with FRONT faces
+; culled -- so only the parts of the enlarged shell that sit BEHIND the real body
+; survive, which is exactly the silhouette.
+;
+; `cull_mode = 1` is CULL_FRONT and is the entire trick. With the default back-face
+; culling this renders as a slightly-too-large blob covering the creature.
+;
+; Unshaded on purpose: an outline that responds to lighting is not an outline, it
+; is a halo that vanishes on the shadowed side -- which is the side that needed it.
+;
+; This exists because black-on-grey-in-a-dim-corridor is this example's likeliest
+; way to look broken while being perfectly correct.
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+shading_mode = 0
+cull_mode = 1
+albedo_color = Color(0.22, 0.16, 0.24, 1)
+disable_receive_shadows = true

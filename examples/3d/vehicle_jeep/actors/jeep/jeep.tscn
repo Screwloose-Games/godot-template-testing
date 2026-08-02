@@ -1,0 +1,95 @@
+; The drivable jeep. Instance this; it needs no per-placement wiring beyond an
+; optional spawn_point.
+;
+; There are deliberately NO CollisionShape3D children here. The hull collision is
+; adopted at runtime from the convex proxies the imported model already carries --
+; see JeepVisuals.take_body_shapes(). A .tres extract would go stale the day the
+; model is re-exported, with nothing anywhere reporting it.
+;
+; Two numbers here are derived, not chosen, and verify_jeep_static.gd recomputes
+; both so they cannot drift apart silently:
+;
+;   wheel_radius = 0.4173   measured off the wheel mesh by tools/dump_jeep_model.gd,
+;                           not the spec sheet's rounded 0.42.
+;
+;   wheel node Y = 0.5673   = 0.4173 (wheel centre at rest) + wheel_rest_length
+;                             - static sag, where sag = g / (4 * stiffness)
+;                             = 14.0 / 140 = 0.10 m. The engine hangs the wheel
+;                             centre below the node by the suspension length, so
+;                             getting this wrong makes the art float or sink.
+;                             Mass cancels out, so retuning mass does not move it.
+;
+; center_of_mass is the highest-risk number in the demo. The adopted hulls span
+; y 0.49 -> 2.14 on a 1.55 m track; left on AUTO the centre of mass lands near
+; y = 1.1 and the jeep rolls over on the first hard corner -- a symptom that reads
+; as bad steering tuning and sends you off to retune the wrong thing.
+
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="jeep_controller.gd" id="1_controller"]
+[ext_resource type="PackedScene" path="jeep_visuals.tscn" id="2_visuals"]
+[ext_resource type="Script" path="jeep_input_actions.gd" id="3_input"]
+
+[node name="Jeep" type="VehicleBody3D"]
+mass = 1400.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.35, 0.05)
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_controller")
+
+[node name="Visuals" parent="." instance=ExtResource("2_visuals")]
+unique_name_in_owner = true
+
+[node name="WheelFL" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.76, 0.5673, -1.2)
+use_as_traction = true
+use_as_steering = true
+wheel_radius = 0.4173
+wheel_rest_length = 0.25
+wheel_friction_slip = 1.0
+suspension_travel = 0.2
+suspension_stiffness = 35.0
+suspension_max_force = 20000.0
+damping_compression = 3.0
+damping_relaxation = 5.3
+
+[node name="WheelFR" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.76, 0.5673, -1.2)
+use_as_traction = true
+use_as_steering = true
+wheel_radius = 0.4173
+wheel_rest_length = 0.25
+wheel_friction_slip = 1.0
+suspension_travel = 0.2
+suspension_stiffness = 35.0
+suspension_max_force = 20000.0
+damping_compression = 3.0
+damping_relaxation = 5.3
+
+[node name="WheelRL" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.78, 0.5673, 1.15)
+use_as_traction = true
+wheel_radius = 0.4173
+wheel_rest_length = 0.25
+wheel_friction_slip = 1.0
+suspension_travel = 0.2
+suspension_stiffness = 35.0
+suspension_max_force = 20000.0
+damping_compression = 3.0
+damping_relaxation = 5.3
+
+[node name="WheelRR" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.78, 0.5673, 1.15)
+use_as_traction = true
+wheel_radius = 0.4173
+wheel_rest_length = 0.25
+wheel_friction_slip = 1.0
+suspension_travel = 0.2
+suspension_stiffness = 35.0
+suspension_max_force = 20000.0
+damping_compression = 3.0
+damping_relaxation = 5.3
+
+[node name="InputActions" type="Node" parent="."]
+script = ExtResource("3_input")

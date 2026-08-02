@@ -6,7 +6,8 @@
 # derived from; it is now a historical snapshot. Edit this file, then run:
 #
 #     python .github/scripts/validate-pipeline-doc.py
-#     python tools/pipeline/render_pipeline.py
+#     python tools/pipeline/pipeline.py render pipeline
+#     python tools/pipeline/pipeline.py render issue-templates --write
 #
 # See documentation/pipeline/README.md.
 
@@ -69,7 +70,7 @@ tools:
       tools/blender-vehicle/ - builds a vehicle in Blender from a Python
       description: geometry, UVs, a baked 2048 atlas, collision proxies and a
       validated glTF, in two calls. Only models/<name>.py is bespoke. Its README
-      is the retrospective from assets/3d/vehicles/jeep_turret, including the
+      is the retrospective from assets/art/3d/vehicles/jeep_turret, including the
       traps that cost a rebuild to find. Run build.blockout() and get the
       silhouette approved before build.produce(), which spends ~90 seconds baking.
 
@@ -141,7 +142,7 @@ images:
     height: 666
     alt: >-
       GitHub Desktop on the solar-punk-jam repository showing five staged files
-      under assets/3d/structures/raised_bed - the .png, .bin and .gltf plus both
+      under assets/art/3d/structures/raised_bed - the .png, .bin and .gltf plus both
       .import sidecars - committing to the asset-updates branch.
     source:
       svg_image_id: IMG_6
@@ -154,7 +155,7 @@ images:
     height: 335
     alt: >-
       Godot's FileSystem context menu on sm_rain_barrel.gltf under
-      assets/3d/structures, with "New Inherited Scene" highlighted.
+      assets/art/3d/structures, with "New Inherited Scene" highlighted.
     source:
       svg_image_id: IMG_2
       board_x: 4351
@@ -183,10 +184,11 @@ code_mirrors:
   - id: aseprite_path_root
     path: .github/scripts/validate-aseprite-files.py
     symbol: PATH_CONVENTION_ROOT
-    value: game
+    value: assets/art/2d
     note: >-
-      2D art lives under game/. 3D assets live under assets/3d/ - the two roots
-      are deliberately different, not a mistake to reconcile.
+      2D art lives under assets/art/2d/, 3D under assets/art/3d/, alongside
+      assets/music/ and assets/sfx/. Aseprite filenames are only enforced under
+      this root, so fixtures and tooling samples elsewhere are exempt.
   - id: aseprite_tags_required
     path: .github/scripts/validate-aseprite-files.py
     symbol: ENFORCE_TAGS_REQUIRED
@@ -208,12 +210,12 @@ code_mirrors:
   - id: model_path_root
     path: .github/scripts/validate-model-files.py
     symbol: MODEL_ROOT
-    value: assets/3d
+    value: assets/art/3d
     note: >-
-      3D assets live under assets/3d/. 2D art lives under game/ - the two roots
-      are deliberately different, not a mistake to reconcile. Model filenames are
-      only enforced under this root, so examples/ can hold prototypes and
-      third-party art that ignore the convention on purpose.
+      3D assets live under assets/art/3d/, 2D art under assets/art/2d/ - siblings
+      under one assets/art/ root, alongside assets/music/ and assets/sfx/. Model
+      filenames are only enforced under this root, so examples/ can hold
+      prototypes and third-party art that ignore the convention on purpose.
   - id: model_spec_schema_enforced
     path: .github/scripts/validate-model-files.py
     symbol: ENFORCE_SPEC_SCHEMA
@@ -351,7 +353,7 @@ pipelines:
             - kind: script
               path: .github/scripts/validate-model-files.py
               note: >-
-                Enforced under assets/3d/ only. examples/ holds self-contained
+                Enforced under assets/art/3d/ only. examples/ holds self-contained
                 prototypes and third-party art that deliberately do not follow
                 the shared conventions.
           deprecated_aliases:
@@ -359,8 +361,10 @@ pipelines:
               note: Unprefixed names predate the sm_/sk_ split. Rename on next touch.
             - pattern: game/{game_object_directory}/{object_name}.gltf
               note: >-
-                The game/ root was asked for by older issue templates. 3D assets
-                live under assets/3d/; game/ is the 2D art root and stays that way.
+                The game/ root was asked for by older issue templates and no
+                longer exists. 3D assets live under assets/art/3d/ and 2D art
+                under assets/art/2d/. Kept so the old form is still recognised
+                and reported rather than passing unnoticed.
         - id: skeletal_mesh_gltf
           pattern: sk_{object}.gltf
           regex: "^sk_[a-z0-9]+(_[a-z0-9]+)*\\.gltf$"
@@ -376,7 +380,7 @@ pipelines:
           enforced_by:
             - kind: script
               path: .github/scripts/validate-model-files.py
-              note: Enforced under assets/3d/ only, as for static meshes.
+              note: Enforced under assets/art/3d/ only, as for static meshes.
         - id: gltf_binary_buffer
           pattern: "{mesh_stem}.bin"
           regex: "^s[mk]_[a-z0-9]+(_[a-z0-9]+)*\\.bin$"
@@ -516,12 +520,12 @@ pipelines:
                 model gains acceptance criteria at all.
 
       directory_layout:
-        - path: assets/3d/{category}/{object}/
+        - path: assets/art/3d/{category}/{object}/
           description: >-
             Everything belonging to one 3D object: the mesh, its buffer, its
             textures, every .import sidecar, and the model container scene.
             One directory per object, so a re-export touches nothing else.
-          example: assets/3d/structures/raised_bed/
+          example: assets/art/3d/structures/raised_bed/
           contains:
             - static_mesh_gltf
             - gltf_binary_buffer
@@ -530,7 +534,7 @@ pipelines:
             - model_container_scene
             - model_spec
         - path: prefabs/{category}/
-          description: Prefab scenes, grouped by the same category names used under assets/3d/.
+          description: Prefab scenes, grouped by the same category names used under assets/art/3d/.
           example: prefabs/structures/
           contains:
             - prefab_scene
@@ -555,7 +559,7 @@ pipelines:
         title: Static mesh (glTF)
         extensions: [.gltf]
         naming: static_mesh_gltf
-        location: assets/3d/{category}/{object}/
+        location: assets/art/3d/{category}/{object}/
         generated: true
         required_siblings: [gltf_binary_buffer, godot_import_sidecar]
         optional_siblings: [texture_map, model_spec]
@@ -848,7 +852,7 @@ pipelines:
               - Texture the model in Substance Painter.
               - Open File > Export Textures.
               - Set Output template to "glTF PBR Metal Roughness".
-              - Set the output directory to the asset's directory under assets/3d/{category}/{object}/.
+              - Set the output directory to the asset's directory under assets/art/3d/{category}/{object}/.
               - Set the export filename pattern so the files land as t_{asset_name}_{descriptor}, lowercase.
             rules:
               - id: texture_naming_at_export
@@ -891,7 +895,7 @@ pipelines:
             instructions:
               - File > Export > glTF 2.0.
               - In the Format dropdown choose "glTF Separate (.gltf + .bin + textures)".
-              - Export into assets/3d/{category}/{object}/ using the sm_ or sk_ prefixed name.
+              - Export into assets/art/3d/{category}/{object}/ using the sm_ or sk_ prefixed name.
             rules:
               - id: gltf_not_glb
                 statement: Export "glTF Separate", never "glTF Binary (.glb)".
@@ -920,7 +924,7 @@ pipelines:
                   matching Sketchfab. Do not "fix" it back to +Z.
 
                   Measured against a real export rather than assumed - see the
-                  reference asset in assets/3d/example_cubes_facing, whose nub
+                  reference asset in assets/art/3d/example_cubes_facing, whose nub
                   sits on Blender +Y and lands on glTF -Z.
                 severity: blocking
                 checklist: The exported .gltf faces -Z (from +Y in Blender).
@@ -998,7 +1002,7 @@ pipelines:
             role: artist
             summary: >-
               Copy the exported .gltf, .bin and textures into
-              assets/3d/{category}/{object}/, overwriting what is there.
+              assets/art/3d/{category}/{object}/, overwriting what is there.
             instructions:
               - Copy the exported files into the asset's directory.
               - Overwrite the existing files; do not rename anything.
@@ -1019,7 +1023,7 @@ pipelines:
                   A re-export then touches exactly one directory, and a reviewer
                   can see the whole asset in one place.
                 severity: warning
-                checklist: All files for the object are in assets/3d/{category}/{object}/.
+                checklist: All files for the object are in assets/art/3d/{category}/{object}/.
             screenshots:
               - image_id: update_autogenerated_texture_name
                 caption: >-
@@ -1586,15 +1590,15 @@ pipelines:
               path: .github/scripts/validate-aseprite-files.py
               symbol: TAG_NAME_PATTERN
       directory_layout:
-        - path: game/{game_object}/
+        - path: assets/art/2d/{game_object}/
           description: >-
             One directory per game object. The file stem must match its parent or
-            grandparent directory, so game/spider/spider.aseprite and
-            game/spider/animations/spider.aseprite are both accepted.
-          example: game/spider/spider.aseprite
-        - path: game/{game_object}/animations/
+            grandparent directory, so assets/art/2d/spider/spider.aseprite and
+            assets/art/2d/spider/animations/spider.aseprite are both accepted.
+          example: assets/art/2d/spider/spider.aseprite
+        - path: assets/art/2d/{game_object}/animations/
           description: Optional nesting level for animation files.
-          example: game/spider/animations/spider.aseprite
+          example: assets/art/2d/spider/animations/spider.aseprite
       rules:
         - id: max_texture_dimension
           statement: Keep textures at or under 1024 px in either dimension.

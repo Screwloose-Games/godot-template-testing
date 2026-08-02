@@ -31,9 +31,9 @@ never set the variable resolves to an empty string, producing the image tag
 
 | Workflow | Trigger | Enforces | Blocks? |
 |---|---|---|---|
-| `validate-aseprite-files.yml` | PR touching `**.aseprite`, `**.ase`, `**.png`; manual | Filename convention, canvas/image ≤ 1024px, unique lowercase tag names, `.import` sidecar present, `game/` path layout | Yes |
+| `validate-aseprite-files.yml` | PR touching `**.aseprite`, `**.ase`, `**.png`; manual | Filename convention, canvas/image ≤ 1024px, unique lowercase tag names, `.import` sidecar present, `assets/art/2d/` path layout | Yes |
 | `validate-audio-files.yml` | PR touching `**.wav`, `**.ogg`, `**.mp3`; manual | 44.1kHz / 16-bit / mono WAV, ≤ 10s, ≤ 49MB, filename convention | Yes |
-| `validate-gltf-files.yml` | PR touching `**.gltf`, `**.glb`, `**.spec.yaml`; manual | Referenced files exist on disk, filename convention under `assets/3d/`, spec validates against its schema, no leftover node transforms, and the model checked against a sibling `<model>.gltf.spec.yaml` — bounds, poly budget, up axis, expected textures and animations. Also renders ortho previews. | Yes |
+| `validate-gltf-files.yml` | PR touching `**.gltf`, `**.glb`, `**.spec.yaml`; manual | Referenced files exist on disk, filename convention under `assets/art/3d/`, spec validates against its schema, no leftover node transforms, and the model checked against a sibling `<model>.gltf.spec.yaml` — bounds, poly budget, up axis, expected textures and animations. Also renders ortho previews. | Yes |
 | `flag-fbx-files.yml` | PR touching `**.fbx`; manual | Rejects FBX outright, comments with per-DCC glTF export links | Yes |
 | `flag-mp3-files.yml` | PR touching `**.mp3`; manual | Rejects MP3 — its padding breaks seamless loops | Yes |
 | `check-import-files.yml` | PR touching any of 22 asset extensions | Every asset has a current Godot `.import` sidecar. Same-repo PRs get the sidecars committed back automatically; fork PRs get them as an artifact and fail. | Yes |
@@ -180,7 +180,7 @@ python tools/gltf-validator/test_model_spec.py
 python tools/gltf-validator/test_validate_gltf_spec.py
 
 # Validate specific files
-python .github/scripts/validate-aseprite-files.py game/spider/spider.aseprite
+python .github/scripts/validate-aseprite-files.py assets/art/2d/spider/spider.aseprite
 
 # Reproduce the exact CI path from a saved changed-files payload
 python .github/scripts/validate-aseprite-files.py --changed-files-json payload.json

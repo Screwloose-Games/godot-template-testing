@@ -6,7 +6,7 @@ finished with it". A model can satisfy the glTF spec, the size checks, the poly
 budget and the transform rules, and still arrive in the engine as the wrong kind
 of node, resting below the floor, or claiming a size no render agrees with.
 
-All three came out of building assets/3d/vehicles/jeep_turret, and each of them
+All three came out of building assets/art/3d/vehicles/jeep_turret, and each of them
 cost a full round trip -- export, import, open the scene, read the tree -- to find
 by hand. They are cheap to compute from the glTF JSON, so they belong in the gate
 rather than in a checklist.

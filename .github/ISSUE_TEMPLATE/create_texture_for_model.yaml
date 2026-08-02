@@ -27,7 +27,7 @@ body:
       description: >-
         Provide the full filepath where the texture should be saved. Textures sit
         beside the .gltf that references them, not in a separate textures/ folder.
-      placeholder: "Enter the full file path... assets/3d/{category}/{object_name}/t_{object_name}_basecolor.png"
+      placeholder: "Enter the full file path... assets/art/3d/{category}/{object_name}/t_{object_name}_basecolor.png"
     validations:
       required: true
 
@@ -58,7 +58,7 @@ body:
         - [ ] A pull request (PR) is created with the changes.
 
         <!-- pipeline:subtasks:start -->
-        <!-- Generated from documentation/pipeline/pipeline.yaml. Edit that file, then run tools/pipeline/render_issue_templates.py --write. -->
+        <!-- Generated from documentation/pipeline/pipeline.yaml. Edit that file, then run tools/pipeline/pipeline.py render issue-templates --write. -->
         - [ ] Textures export as t_{asset_name}_{descriptor}.png, lowercase.
         - [ ] Textures were exported with the glTF PBR Metal Roughness template.
         - [ ] Filenames follow [prefix]_[asset_name]_[descriptor]_[variant].

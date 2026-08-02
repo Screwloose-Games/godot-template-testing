@@ -1,0 +1,15 @@
+; The splat where a planted tentacle meets the wall.
+;
+; Small, but it is what tells the player the tentacle is STUCK TO SOMETHING rather
+; than merely pointing at it. Without the pads the strands read as antennae.
+;
+; Unshaded so it stays visible on a wall facing away from the sun, and cull-disabled
+; because the quad is oriented to the wall normal and a hit on a back face would
+; otherwise show nothing.
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+shading_mode = 0
+cull_mode = 2
+albedo_color = Color(0.28, 0.12, 0.17, 1)
+disable_receive_shadows = true

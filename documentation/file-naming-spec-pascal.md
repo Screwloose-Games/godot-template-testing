@@ -33,7 +33,7 @@ SM_Rain_Barrel.gltf             ❌  underscores inside the name
 SM_rainBarrel.gltf              ❌  camelCase
 ```
 
-Folders follow the same rule: `Assets/3D/Structures/RainBarrel/`, not `assets/3d/structures/rain_barrel/`.
+Folders follow the same rule: `Assets/Art/3D/Structures/RainBarrel/`, not `assets/art/3d/structures/rain_barrel/`.
 
 ## Asset type prefixes
 

@@ -44,9 +44,9 @@ body:
       placeholder: "Enter the full file path..."
       # This key was previously duplicated (.blend then .gltf), which is invalid
       # YAML and silently resolved to the .gltf line.
-      # The root is assets/3d/ -- game/ is the 2D art root. See
+      # The root is assets/art/3d/ -- assets/art/2d/ is the 2D art root. See
       # documentation/pipeline/pipeline.yaml.
-      value: "assets/3d/{category}/{object_name}/sm_{object_name}.gltf"
+      value: "assets/art/3d/{category}/{object_name}/sm_{object_name}.gltf"
     validations:
       required: true
 
@@ -74,7 +74,7 @@ body:
         - [ ] A pull request (PR) is created with the changes.
 
         <!-- pipeline:subtasks:start -->
-        <!-- Generated from documentation/pipeline/pipeline.yaml. Edit that file, then run tools/pipeline/render_issue_templates.py --write. -->
+        <!-- Generated from documentation/pipeline/pipeline.yaml. Edit that file, then run tools/pipeline/pipeline.py render issue-templates --write. -->
         - [ ] The placeholder matches the dimensions on the issue.
         - [ ] The placeholder uses the asset's final filename.
         - [ ] No mesh has a child mesh.
@@ -88,7 +88,7 @@ body:
         - [ ] The exported .gltf faces -Z (from +Y in Blender).
         - [ ] The exported .gltf is +Y up.
         - [ ] No texture was renamed by hand; wrong names were fixed at the exporter.
-        - [ ] All files for the object are in assets/3d/{category}/{object}/.
+        - [ ] All files for the object are in assets/art/3d/{category}/{object}/.
         - [ ] The files were imported through the Godot editor.
         - [ ] The .import sidecars were confirmed in the OS file explorer.
         - [ ] The mesh, buffer, textures and every .import sidecar are in the same commit.

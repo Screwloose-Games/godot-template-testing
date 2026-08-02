@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+; The tentacle poser, and the pads where the strands grip.
+;
+; The poser itself draws nothing -- it writes transforms onto the model's own bone
+; nodes, which live under %Limbs on the creature. This node exists to own the curve
+; state and the update order, so it has no mesh and no transform of its own.
+;
+; THE PADS ARE top_level AND HELD AT IDENTITY by the script. Their instance transforms
+; are computed in world space, so inheriting the creature's transform would apply it
+; twice -- and because the creature writhes, the error would be a rotation, which reads
+; as the pads swimming around the walls rather than sticking to them.
+
+[ext_resource type="Script" path="tentacle_bones.gd" id="1_bones"]
+[ext_resource type="Material" path="../../materials/anchor_pad.tres" id="2_pad"]
+
+[node name="TentacleBones" type="Node3D"]
+script = ExtResource("1_bones")
+
+[node name="AnchorPads" type="MultiMeshInstance3D" parent="."]
+unique_name_in_owner = true
+material_override = ExtResource("2_pad")
+cast_shadow = 0

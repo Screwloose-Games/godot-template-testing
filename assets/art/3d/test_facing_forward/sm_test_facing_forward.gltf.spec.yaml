@@ -1,0 +1,21 @@
+# One of a matched pair (see test_facing_backwards). Both models measure identically and
+# both should pass every check -- facing_direction is INFO-only because nothing in
+# a glTF marks which side of a mesh is the face.
+#
+# The pair exists to verify the RENDER, which is the only thing that can judge
+# facing. This one's nose points -Z, which is this project's
+# forward (Godot's Vector3.FORWARD), so the red "Facing Direction" arrow in the
+# top and right views should AGREE with the nose.
+#
+# Deliberately untextured, unlike the cubes: these say which way they point by
+# silhouette alone, so they stay a clean control for the facing arrow.
+width: 0.8
+height: 0.6
+depth: 1.0
+poly_count_budget: 8
+up_direction: "+Y"
+facing_direction: "-Z"
+collision_expected: false
+navigation_expected: false
+min_material_count: 1
+rests_on_ground: true

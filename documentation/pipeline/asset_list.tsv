@@ -1,0 +1,2 @@
+priority	status	name	description	file_location
+high	todo	player_character	Create 3D model for player_character	assets/art/character/player_character.gltf

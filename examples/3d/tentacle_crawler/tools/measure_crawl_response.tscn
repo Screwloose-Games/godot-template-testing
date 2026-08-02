@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+; Wrapper for measure_crawl_response.gd. A .tscn because a node added during
+; SceneTree._initialize() never receives _ready().
+
+[ext_resource type="Script" path="measure_crawl_response.gd" id="1_measure"]
+
+[node name="MeasureCrawlResponse" type="Node"]
+script = ExtResource("1_measure")

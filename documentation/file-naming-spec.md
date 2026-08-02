@@ -122,16 +122,16 @@ next re-export, not by renaming.
 
 | Path | What goes there |
 | --- | --- |
-| `assets/3d/{category}/{object}/` | Everything for one 3D object: mesh, `.bin`, textures, every `.import` sidecar, the container scene, the spec |
-| `prefabs/{category}/` | Prefab scenes, using the same category names as `assets/3d/` |
+| `assets/art/3d/{category}/{object}/` | Everything for one 3D object: mesh, `.bin`, textures, every `.import` sidecar, the container scene, the spec |
+| `prefabs/{category}/` | Prefab scenes, using the same category names as `assets/art/3d/` |
 | `levels/` | Shipping level scenes |
 | `test/levels/` | Scratch levels for trying assets out. Not shipped |
-| `game/{game_object}/` | 2D art. Optionally nested one level deeper as `game/{game_object}/animations/` |
+| `assets/art/2d/{game_object}/` | 2D art. Optionally nested one level deeper as `assets/art/2d/{game_object}/animations/` |
 | `addons/` | Third-party plugins |
 
-3D lives under `assets/3d/`, 2D lives under `game/`. The two roots are deliberately
+3D lives under `assets/art/3d/`, 2D lives under `assets/art/2d/`. The roots are deliberately
 different, not a mistake to reconcile — the aseprite validator hard-codes `game`. Some
-older issue templates still ask for 3D assets under `game/`; that form is deprecated.
+older issue templates still ask for 3D assets under `game/`; that root no longer exists.
 
 One directory per object, so a re-export touches nothing else.
 

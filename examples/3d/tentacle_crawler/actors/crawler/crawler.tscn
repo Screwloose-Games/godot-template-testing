@@ -1,0 +1,108 @@
+[gd_scene load_steps=6 format=3]
+
+; The creature.
+;
+; NO COLLISION SHAPE ANYWHERE IN HERE, and that is the design rather than an
+; omission. The body is kinematic (see crawler_body.gd) and everything it knows
+; about the world comes from raycasts, so a collider would do nothing except give
+; the camera's SpringArm3D something to catch on. `[kinematic]` in the static suite
+; fails if a RigidBody3D or CharacterBody3D ever appears here.
+;
+; Four layers of node, each with one job:
+;
+;   Crawler    position and orientation. Written once per tick, always unit scale.
+;   %Rig       the model's yaw, uniform scale and re-centring. Assembled at _ready.
+;   %Hull      the SQUASH. Scaling this instead of the root is deliberate -- scaling
+;              the root would also scale the shoulder offsets below and the probe
+;              fan's origin, so the creature would grow tentacle reach as it flexed.
+;   %Limbs     where the tentacles grow from, and NOT under the squash. See below.
+;
+; CHILD ORDER IS LOAD-BEARING, TWICE.
+;
+; `Rig` before `Tentacles`: Godot readies a node's children in tree order, each
+; subtree fully, before the parent. TentacleArray._ready() seeds every strand from
+; `shoulder(i)`, which reads %Limbs' children -- and those children do not exist
+; until CrawlerRig._ready() has moved them there. Reorder these two and the strands
+; all seed at the body's origin with no error anywhere.
+;
+; `Hull` and `Limbs` before `Model` inside the rig: the rig reparents out of Model
+; into both, so both have to be in the tree when it runs.
+
+[ext_resource type="Script" path="crawler_body.gd" id="1_body"]
+[ext_resource type="Script" path="../../components/rig/crawler_rig.gd" id="2_rig"]
+[ext_resource type="PackedScene" uid="uid://c82xv6ka1nfp3" path="../../assets/models/cosmic-horror.glb" id="3_model"]
+[ext_resource type="Script" path="../../components/tentacle/tentacle_array.gd" id="4_tentacles"]
+[ext_resource type="PackedScene" path="../../components/tentacle/tentacle_bones.tscn" id="5_bones"]
+
+; node_paths= on the ROOT node wires the body to its own tentacles. The instancing
+; scene adds its own node_paths for `target_marker`; the two lists are independent,
+; so an outer scene overriding one property does not drop the other.
+[node name="Crawler" type="Node3D" node_paths=PackedStringArray("tentacles")]
+script = ExtResource("1_body")
+tentacles = NodePath("Tentacles")
+
+; Everything the model needs doing to it before the solver can drive it: a 180 degree
+; yaw (it faces +Z, Godot's forward is -Z), the uniform scale, and an offset that puts
+; the torso's centre on the Crawler origin rather than standing it on top. All three
+; are computed in CrawlerRig._ready() from the model's own numbers, so this node's
+; authored transform is identity and re-exporting the creature cannot silently bury it
+; in the floor.
+[node name="Rig" type="Node3D" parent="." node_paths=PackedStringArray("model", "hull", "limbs")]
+unique_name_in_owner = true
+script = ExtResource("2_rig")
+model = NodePath("Model")
+hull = NodePath("Hull")
+limbs = NodePath("Limbs")
+
+; The squash node. Receives the torso -- and ONLY the torso.
+;
+; CrawlerBody writes a NON-UNIFORM scale here every physics tick. Godot composes a
+; child's global basis as `parent.basis * child.basis`, so a non-uniform parent times a
+; child rotation is a SHEAR, not a rotation. Any bone chain under this node would
+; therefore skew in proportion to how hard the creature happened to be heaving, and
+; because the bones are nested that shear compounds down the chain. Nothing errors; the
+; limbs just flatten and corkscrew, hardest at the exact moment you are looking at them.
+[node name="Hull" type="Node3D" parent="Rig"]
+unique_name_in_owner = true
+
+; The eight chain roots, squashed by nothing. Their child ORDER is their strand index --
+; TentacleArray reads `shoulders.get_child(i)` positionally -- and CrawlerRig fills them
+; in ascending tentacle_00..07 order to match.
+;
+; These are the model's own socket nodes, so the point force is applied at and the point
+; the geometry grows out of are the same node and cannot drift apart. That is what
+; replaced the six hand-placed Marker3Ds this scene used to carry.
+[node name="Limbs" type="Node3D" parent="Rig"]
+unique_name_in_owner = true
+
+; The imported creature. A DONOR: the rig moves its torso and its eight chains out into
+; the two nodes above and then frees what is left, which is the empty glTF root and the
+; eight `_tip_target` empties -- frozen rest-pose markers that are actively misleading
+; once the tips are solved live.
+[node name="Model" parent="Rig" instance=ExtResource("3_model")]
+
+; The strand lifecycle. A CHILD of the body, which fixes the update order: Godot
+; runs _physics_process in tree order, so CrawlerBody writes this tick's transform
+; before TentacleArray reads it, and the tentacles are never chasing a stale body.
+;
+; The reverse direction lags by one tick -- CrawlerBody applies force from the anchor
+; state computed on the PREVIOUS tick. That is deliberate. Solving it both ways in
+; one tick would need an iteration and buys nothing at 60 Hz; a 16 ms lag on a force
+; whose envelope ramps over 340 ms is invisible.
+;
+; node_paths= is mandatory on any node assigning a Node-typed @export. Without it
+; Godot stores the NodePath, fails to resolve it because the target is not in the
+; tree yet, and leaves the property NULL WITH NO ERROR ANYWHERE -- the tentacles
+; would simply never run and nothing would say so.
+[node name="Tentacles" type="Node3D" parent="." node_paths=PackedStringArray("body", "shoulders", "rig")]
+script = ExtResource("4_tentacles")
+body = NodePath("..")
+shoulders = NodePath("../Rig/Limbs")
+rig = NodePath("../Rig")
+
+; The posing half. Reads the strand state above and lays each chain along it; applies
+; nothing, decides nothing. Listed after Tentacles so it poses this tick's curve from
+; this tick's state rather than last tick's.
+[node name="Bones" parent="." node_paths=PackedStringArray("tentacles", "rig") instance=ExtResource("5_bones")]
+tentacles = NodePath("../Tentacles")
+rig = NodePath("../Rig")

@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3]
+
+; Wrapper for verify_tentacle_crawler_runtime.gd.
+;
+; It is a .tscn rather than a bare --script because a node added during
+; SceneTree._initialize() never receives _ready(): the script would run nothing,
+; print nothing and exit 0, which looks exactly like every check passing.
+
+[ext_resource type="Script" path="verify_tentacle_crawler_runtime.gd" id="1_verify"]
+
+[node name="VerifyTentacleCrawlerRuntime" type="Node"]
+script = ExtResource("1_verify")

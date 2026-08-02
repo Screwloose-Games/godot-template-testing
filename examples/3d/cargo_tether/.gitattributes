@@ -1,0 +1,8 @@
+# Normalize EOL for all files that Git considers text files.
+* text=auto eol=lf
+
+# Never let the text heuristic touch binary model data.
+*.glb binary
+*.fbx binary
+*.blend binary
+*.gltf text eol=lf

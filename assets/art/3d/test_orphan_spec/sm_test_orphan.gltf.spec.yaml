@@ -1,0 +1,9 @@
+# DELIBERATELY WRONG: there is no sm_test_orphan.gltf beside this file.
+# This is the near-miss the pipeline doc warns about -- a spec is named for
+# the whole model filename, so sm_thing.gltf pairs with
+# sm_thing.gltf.spec.yaml, not sm_thing.spec.yaml.
+#
+# Expected: FAIL orphan_spec.
+width: 1.0
+height: 1.0
+depth: 1.0

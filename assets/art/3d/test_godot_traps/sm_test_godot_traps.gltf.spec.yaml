@@ -1,0 +1,18 @@
+# DELIBERATELY WRONG, twice over:
+#
+# 1. The visual mesh node is named `steering_wheel`. Godot's importer matches
+#    `_wheel` as well as `-wheel`, so it imports as a VehicleWheel3D -- a physics
+#    node that only functions parented to a VehicleBody3D. The file is valid
+#    glTF throughout, so nothing but this check can see it.
+# 2. `body-col` is 1.4m against 1m of art, so the collision proxy sticks 20cm
+#    out past the visual mesh on every axis -- and the size checks measure the
+#    whole file, so that overhang becomes the model's declared dimensions.
+#
+# collision_expected is true so the collision presence check passes and the two
+# intended failures stand alone. Size keys are omitted for the same reason.
+#
+# Expected: FAIL godot_node_suffixes, FAIL collision_within_visual.
+collision_expected: true
+navigation_expected: false
+up_direction: "+Y"
+facing_direction: "-Z"
